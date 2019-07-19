@@ -1,0 +1,20 @@
+apply plugin: 'com.android.application'
+android {
+    compileSdkVersion 21
+    buildToolsVersion "21.1.0"
+   defaultConfig {
+        applicationId "com.rose.android"
+        
+    }
+    buildTypes {
+        release {
+    
+          //  minifyEnabled true//混淆
+         //   zipAlignEnabled true//内存对齐
+           shrinkResources true// 移除无用的resource文件
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }}}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+}
