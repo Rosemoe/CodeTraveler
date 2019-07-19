@@ -11,10 +11,13 @@ import android.graphics.Paint;
 import android.text.TextPaint;
 import android.graphics.Typeface;
 import android.graphics.Color;
+import android.view.inputmethod.BaseInputConnection;
+import android.text.Editable;
 
 public class CodeEditor extends View {
 	
 	private Paint mPaint;
+	private EditorStyle mStyle;
 	
 	public CodeEditor(Context context){
 		this(context,null);
@@ -39,8 +42,57 @@ public class CodeEditor extends View {
 		mPaint = new TextPaint();
 		mPaint.setAntiAlias(true);
 		mPaint.setTypeface(Typeface.MONOSPACE);
+		mStyle = new EditorStyle();
 	}
 	
+	public EditorStyle getStyle(){
+		return mStyle;
+	}
+	
+	public Editable getEditableText(){
+		return null;
+	}
+	
+	public int getLineCount(){
+		return 0;
+	}
+	
+	public int getLineStart(int line){
+		return 0;
+	}
+	
+	public int getLineEnd(int line){
+		return 0;
+	}
+	
+	public int getLineByIndex(int charIndex){
+		return 0;
+	}
+	
+	public class EditorInputConnection extends BaseInputConnection{
+		
+		public EditorInputConnection(){
+			super(CodeEditor.this,true);
+		}
+
+		@Override
+		public Editable getEditable() {
+			return CodeEditor.this.getEditableText();
+		}
+
+		@Override
+		public boolean beginBatchEdit() {
+			//TODO send to Document
+			return super.beginBatchEdit();
+		}
+
+		@Override
+		public boolean endBatchEdit() {
+			//TODO send to Document
+			return super.endBatchEdit();
+		}
+		
+	}
 	
 	public class EditorStyle{
 		
@@ -50,7 +102,7 @@ public class CodeEditor extends View {
 		
 		private float distance;
 		
-		public EditorStyle(){
+		private EditorStyle(){
 			distsncePixelOrDouble = true;
 			distance = 5;
 		}
@@ -72,6 +124,22 @@ public class CodeEditor extends View {
 		
 		public float getTextSize(){
 			return mPaint.getTextSize();
+		}
+		
+		public void setTextScaleX(float scaleX){
+			mPaint.setTextScaleX(scaleX);
+		}
+		
+		public float getTextScaleX(){
+			return mPaint.getTextScaleX();
+		}
+		
+		public float getTextSkewX(){
+			return mPaint.getTextSkewX();
+		}
+		
+		public void setTextSkewX(float skewX){
+			mPaint.setTextSkewX(skewX);
 		}
 		
 		public float getLineHeight(){
@@ -110,6 +178,7 @@ public class CodeEditor extends View {
 		public int getDefaultTextColor(){
 			return this.defaultTextColor;
 		}
+		
 	}
 	
 }
