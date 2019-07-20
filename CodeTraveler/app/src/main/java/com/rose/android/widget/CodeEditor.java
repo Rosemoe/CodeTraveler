@@ -15,6 +15,17 @@ import android.view.inputmethod.BaseInputConnection;
 import android.text.Editable;
 import com.rose.android.util.EditorText;
 import android.view.KeyEvent;
+import android.graphics.Canvas;
+import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.EditorInfo;
+import android.text.Selection;
+import android.widget.OverScroller;
+import android.view.MotionEvent;
+import com.rose.android.util.EditorTouch;
+import android.view.GestureDetector;
+import android.view.ScaleGestureDetector;
+
+//Created By Rose on 2019/7/20
 
 public class CodeEditor extends View implements EditorText.DocumentChangeListener {
 	
@@ -22,6 +33,12 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 	private EditorText mText;
 	private Paint mPaint;
 	private EditorStyle mStyle;
+	
+	private boolean mEditable;
+	
+	private EditorTouch mState;
+	private GestureDetector mDetector_Basic;
+	private ScaleGestureDetector mDetector_Scale;
 	
 	public CodeEditor(Context context){
 		this(context,null);
@@ -46,20 +63,32 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 		mPaint = new TextPaint();
 		mPaint.setAntiAlias(true);
 		mPaint.setTypeface(Typeface.MONOSPACE);
+		mPaint.setTextSize(50.0f);
 		mStyle = new EditorStyle();
-		this.setText("");
+		mState = new EditorTouch(this);
+		mDetector_Basic = new GestureDetector(getContext(),mState);
+		mDetector_Scale = new ScaleGestureDetector(getContext(),mState);
+		mDetector_Basic.setContextClickListener(mState);
+		mDetector_Basic.setOnDoubleTapListener(mState);
+		this.setText("Hello World!\nThis is test activity");
+		this.setEditable(true);
+		super.setFocusable(true);
+		super.setFocusableInTouchMode(true);
 	}
+	
+	//---------------------------------------
 	
 	public void setText(CharSequence text){
 		//TODO
+		if(mText != null){
+			mText.removeDocumentChangeListener(this);
+		}
 		mText = new EditorText(text);
 		mText.addDocumentChangeListener(this);
+		
 		requestLayout();
+		
 		invalidate();
-	}
-	
-	public EditorStyle getStyle(){
-		return mStyle;
 	}
 	
 	public Editable getEditableText(){
@@ -69,7 +98,71 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 	public String getText(){
 		return mText.toString();
 	}
+	
+	//---------------------------------------
+	
+	public EditorStyle getStyles(){
+		return mStyle;
+	}
+	
+	//---------------------------------------
+	
+	@Override
+	public boolean onTouchEvent(MotionEvent event){
+		return mDetector_Basic.onTouchEvent(event)||mDetector_Scale.onTouchEvent(event);
+	}
 
+	@Override
+	public boolean onGenericMotionEvent(MotionEvent event) {
+		return mDetector_Basic.onGenericMotionEvent(event);
+	}
+	
+	//---------------------------------------
+	
+	@Override
+	protected void onDraw(Canvas canvas){
+		super.onDraw(canvas);
+		for(int i = getFirstVisableLine();i <= getLastVisableLine();i++){
+			canvas.drawText(mText,(i!=0)?getLineStart(i)+1:0,getLineEnd(i),10,getLineBaseline(i),mPaint);
+			//canvas.drawLine(0,getLineBaseline(i),getWidth(),getLineBaseline(i)+2,mPaint);
+		}
+	}
+	
+	//---------------------------------------
+	
+	public int getFirstVisableLine(){
+		//TODO
+		return 0;
+	}
+	
+	public int getLastVisableLine(){
+		//TODO
+		return getLineCount() - 1;
+	}
+	
+	public float getLineBaseline(int line){
+		//TODO
+		return mPaint.getTextSize() * (line)+ mPaint.getTextSize() * 3 / 4;
+	}
+	
+	public int getLineCount(){
+		return mText.getLineCount();
+	}
+
+	public int getLineStart(int line){
+		return mText.getLineStart(line);
+	}
+
+	public int getLineEnd(int line){
+		return mText.getLineEnd(line);
+	}
+
+	public int getLineByIndex(int charIndex){
+		return mText.getLineByIndex(charIndex);
+	}
+
+	//---------------------------------------
+	
 	@Override
 	public void onReplace(EditorText doc) {
 		//do nothing
@@ -87,21 +180,30 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 		//TODO
 	}
 	
-	public int getLineCount(){
-		return mText.getLineCount();
+	//---------------------------------------
+
+	public boolean isEditable(){
+		return mEditable;
 	}
 	
-	public int getLineStart(int line){
-		return mText.getLineStart(line);
+	public void setEditable(boolean editable){
+		mEditable = editable;
+	}
+
+	@Override
+	public boolean onCheckIsTextEditor() {
+		return isEditable();
+	}
+
+	@Override
+	public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+		outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT;
+		outAttrs.initialSelStart = Selection.getSelectionStart(mText);
+		outAttrs.initialSelEnd = Selection.getSelectionEnd(mText);
+		return (isEditable()) ? new EditorInputConnection() : null;
 	}
 	
-	public int getLineEnd(int line){
-		return mText.getLineEnd(line);
-	}
-	
-	public int getLineByIndex(int charIndex){
-		return mText.getLineByIndex(charIndex);
-	}
+	//---------------------------------------
 	
 	public class EditorInputConnection extends BaseInputConnection{
 		
@@ -111,7 +213,7 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 
 		@Override
 		public Editable getEditable() {
-			return CodeEditor.this.getEditableText();
+			return isEditable()?getEditableText():null;
 		}
 
 		@Override
@@ -134,6 +236,8 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 		
 	}
 	
+	//---------------------------------------
+	
 	public class EditorStyle{
 		
 		private int defaultTextColor = Color.BLACK;
@@ -152,6 +256,7 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 				typeface = Typeface.MONOSPACE;
 			}
 			mPaint.setTypeface(typeface);
+			invalidate();
 		}
 		
 		public Typeface getTypeface(){
@@ -160,6 +265,7 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 		
 		public void setTextSize(float size){
 			mPaint.setTextSize(size);
+			invalidate();
 		}
 		
 		public float getTextSize(){
@@ -168,6 +274,7 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 		
 		public void setTextScaleX(float scaleX){
 			mPaint.setTextScaleX(scaleX);
+			invalidate();
 		}
 		
 		public float getTextScaleX(){
@@ -180,6 +287,7 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 		
 		public void setTextSkewX(float skewX){
 			mPaint.setTextSkewX(skewX);
+			invalidate();
 		}
 		
 		public float getLineHeight(){
@@ -200,6 +308,7 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 			}
 			distsncePixelOrDouble = true;
 			distance = pixel;
+			invalidate();
 		}
 		
 		public void setLineDistanceDouble(float d){
@@ -209,10 +318,12 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 			}else{
 				throw new IllegalArgumentException("only 0~1 are accepted");
 			}
+			invalidate();
 		}
 		
 		public void setDefaultTextColor(int color){
 			this.defaultTextColor = color;
+			invalidate();
 		}
 		
 		public int getDefaultTextColor(){

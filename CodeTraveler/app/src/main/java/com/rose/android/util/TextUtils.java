@@ -1,5 +1,7 @@
 package com.rose.android.util;
 
+//Created By Rose on 2019/7/20
+
 public class TextUtils{
 
 	private TextUtils(){
