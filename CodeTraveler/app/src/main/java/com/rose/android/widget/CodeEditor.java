@@ -13,9 +13,13 @@ import android.graphics.Typeface;
 import android.graphics.Color;
 import android.view.inputmethod.BaseInputConnection;
 import android.text.Editable;
+import com.rose.android.util.EditorText;
+import android.view.KeyEvent;
 
-public class CodeEditor extends View {
+public class CodeEditor extends View implements EditorText.DocumentChangeListener {
 	
+	//TODO
+	private EditorText mText;
 	private Paint mPaint;
 	private EditorStyle mStyle;
 	
@@ -43,6 +47,15 @@ public class CodeEditor extends View {
 		mPaint.setAntiAlias(true);
 		mPaint.setTypeface(Typeface.MONOSPACE);
 		mStyle = new EditorStyle();
+		this.setText("");
+	}
+	
+	public void setText(CharSequence text){
+		//TODO
+		mText = new EditorText(text);
+		mText.addDocumentChangeListener(this);
+		requestLayout();
+		invalidate();
 	}
 	
 	public EditorStyle getStyle(){
@@ -50,23 +63,44 @@ public class CodeEditor extends View {
 	}
 	
 	public Editable getEditableText(){
-		return null;
+		return mText;
+	}
+	
+	public String getText(){
+		return mText.toString();
+	}
+
+	@Override
+	public void onReplace(EditorText doc) {
+		//do nothing
+	}
+
+	@Override
+	public void onInsert(EditorText doc, int index, CharSequence textToInsert) {
+		invalidate();
+		//TODO
+	}
+
+	@Override
+	public void onDelete(EditorText doc, int index, CharSequence textDeleted) {
+		invalidate();
+		//TODO
 	}
 	
 	public int getLineCount(){
-		return 0;
+		return mText.getLineCount();
 	}
 	
 	public int getLineStart(int line){
-		return 0;
+		return mText.getLineStart(line);
 	}
 	
 	public int getLineEnd(int line){
-		return 0;
+		return mText.getLineEnd(line);
 	}
 	
 	public int getLineByIndex(int charIndex){
-		return 0;
+		return mText.getLineByIndex(charIndex);
 	}
 	
 	public class EditorInputConnection extends BaseInputConnection{
@@ -81,14 +115,20 @@ public class CodeEditor extends View {
 		}
 
 		@Override
+		public boolean sendKeyEvent(KeyEvent event) {
+			//TODO
+			return super.sendKeyEvent(event);
+		}
+
+		@Override
 		public boolean beginBatchEdit() {
-			//TODO send to Document
+			mText.beginBatchEdit();
 			return super.beginBatchEdit();
 		}
 
 		@Override
 		public boolean endBatchEdit() {
-			//TODO send to Document
+			mText.endBatchEdit();
 			return super.endBatchEdit();
 		}
 		
