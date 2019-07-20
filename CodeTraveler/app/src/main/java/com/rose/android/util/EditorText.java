@@ -1,4 +1,4 @@
-package com.rose.common;
+package com.rose.android.util;
 
 import java.util.ArrayList;
 import android.text.Editable;
@@ -6,7 +6,7 @@ import android.text.InputFilter;
 
 //Created By Rose on 2019/7/17
 
-//Document begin
+//EditorText begin
 //Ability:
 //  A simple but useful variable String.
 //  It allows you to midify the text content by its methods,
@@ -27,7 +27,7 @@ import android.text.InputFilter;
 //  Also,you can call getLineCount() to get how many lines there is
 //
 //  :)
-public class Document implements CharSequence,Appendable,Cloneable,Editable {
+public class EditorText implements CharSequence,Appendable,Cloneable,Editable {
 	public final static int DEFAULT_CAPCITY = 100;
 
 	//Start:Instance Fileds------------------------
@@ -47,12 +47,12 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 	//Start:Constructor--------------------------
 
 	//create a null instance
-	public Document() {
+	public EditorText() {
 		this(DEFAULT_CAPCITY);
 	}
 
 	//create a new instance with the given capcity
-	public Document(int capcity) {
+	public EditorText(int capcity) {
 		if (capcity <= 0) {
 			throw new IllegalArgumentException("capcity under or equal zero");
 		}
@@ -63,7 +63,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 	}
 
 	//create with the text
-	public Document(CharSequence source) {
+	public EditorText(CharSequence source) {
 		this(source.length() > 0 ? source.length() : DEFAULT_CAPCITY);
 		//not a real user edition action,we cancel it
 		undoStack.ignoreChange = true;
@@ -72,17 +72,17 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 	}
 
 	//create with characters
-	public Document(char[] source) {
+	public EditorText(char[] source) {
 		this(source, 0, source.length);
 	}
 
 	//create instance with characters [offset,offset+length)
-	public Document(char[] source, int offset, int length) {
+	public EditorText(char[] source, int offset, int length) {
 		this(source, offset, length, DEFAULT_CAPCITY);
 	}
 
 	//create instance with characters [offser,offset+length),and set the capcity
-	public Document(char[] source, int offset, int length, int capcity) {
+	public EditorText(char[] source, int offset, int length, int capcity) {
 		if (capcity <= 0) {
 			throw new IllegalArgumentException("capcity under or equal zero");
 		}
@@ -134,7 +134,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 	//Start:Replace-----------------------------
 
 	//replace region [index,end) to {text}
-	public Document replace(int start, int end, CharSequence text) {
+	public EditorText replace(int start, int end, CharSequence text) {
 		checkState();
 		dispatchBeforeReplace();
 		delete(start, end - start);
@@ -143,7 +143,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 	}
 
 	//st=textStart,ed=textEnd
-	public Document replace(int start, int end, CharSequence text, int st, int ed) {
+	public EditorText replace(int start, int end, CharSequence text, int st, int ed) {
 		return replace(start, end, text.subSequence(st, ed));
 	}
 
@@ -151,18 +151,20 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 	//Start:Delete-----------------------------
 
 	//delete text with region [index,index+length)
-	public Document delete(int index, int length) {
+	public EditorText delete(int index, int length) {
 		checkIndex(index);
 		checkIndex(index + length - 1);
 		checkState();
 		if (length < 0) {
 			throw new IllegalArgumentException("length under zero");
 		}
+		editFlag = true;
 		dispatchBeforeDelete(index, this.subSequence(index, index + length));
 		for (int i = index;i < this.length - length;i++) {
 			chars[i] = chars[i + length];
 		}
 		this.length -= length;
+		editFlag = false;
 		return this;
 	}
 
@@ -170,13 +172,14 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 	//Start:Insert------------------------------
 
 	//insert at {index} with {text} [start,end)
-	public Document insert(int index, CharSequence text, int start, int end) {
+	public EditorText insert(int index, CharSequence text, int start, int end) {
 		return insert(index, text.subSequence(start, end));
 	}
 
 	//insert at {index} with {text}
-	public Document insert(int index, CharSequence text) {
+	public EditorText insert(int index, CharSequence text) {
 		checkState();
+		editFlag = true;
 		if(index != 0)
 			checkIndex(index-1);
 		text = ((text == null) ? "null" : text);
@@ -190,29 +193,30 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 			chars[i] = text.charAt(len - (index + len - i));
 		}
 		length += len;
+		editFlag = false;
 		return this;
 	}
 
 	//End:Insert----------------------------
 	//Start:Append--------------------------
 
-	public Document append(char[] chars) {
+	public EditorText append(char[] chars) {
 		return append(new String(chars));
 	}
 
-	public Document append(char[] chars, int st, int len) {
+	public EditorText append(char[] chars, int st, int len) {
 		return append(new String(chars, st, st + len));
 	}
 
-	public Document append(char c) {
+	public EditorText append(char c) {
 		return append(Character.toString(c));
 	}
 
-	public Document append(CharSequence text, int st, int ed) {
+	public EditorText append(CharSequence text, int st, int ed) {
 		return append(text.subSequence(st, ed));
 	}
 
-	public Document append(CharSequence text) {
+	public EditorText append(CharSequence text) {
 		return insert(length, text);
 	}
 
@@ -393,7 +397,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		if(begin > end){
 			throw new IllegalArgumentException("begin > end!");
 		}
-		return new Document(chars, begin, end - begin, capcity);
+		return new EditorText(chars, begin, end - begin, capcity);
 	}
 
 	@Override
@@ -403,9 +407,9 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 	}
 
 	@Override
-	public Document clone() {
+	public EditorText clone() {
 		//clone object ourselves
-		return (Document)this.subSequence(0, length());
+		return (EditorText)this.subSequence(0, length());
 	}
 
 	@Override
@@ -422,34 +426,35 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		dispatchBeforeDelete(0,subSequence(0,length()));
 		length = 0;
 	}
-	
+
 	//the following methods we do not support
-	
+	//we might support them one day
+
 	@Override
 	public InputFilter[] getFilters(){
 		return new InputFilter[0];
 	}
-	
+
 	@Override
 	public int getSpanStart(Object span){
 		return 0;
 	}
-	
+
 	@Override
 	public int getSpanEnd(Object span){
 		return 0;
 	}
-	
+
 	@Override
 	public void removeSpan(Object span){
 		//do nothing
 	}
-	
+
 	@Override
 	public void clearSpans(){
 		//do nothing
 	}
-	
+
 	@Override
 	public void setSpan(Object span,int start,int end,int mode){
 		//do nothing
@@ -472,7 +477,6 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 
 	@Override
 	public int nextSpanTransition(int p1, int p2, Class p3) {
-		// 雨道汉化: 实现这个方法
 		return 0;
 	}
 
@@ -486,10 +490,10 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		//it is only readable!
 
 		//it will be called when we insert {textToInsert} to {index} in {doc}
-		void onInsert(Document doc, int index, CharSequence textToInsert);
+		void onInsert(EditorText doc, int index, CharSequence textToInsert);
 
 		//it will be called when we delete from {index} and we deleted {textDeleted}
-		void onDelete(Document doc, int index, CharSequence textDeleted);
+		void onDelete(EditorText doc, int index, CharSequence textDeleted);
 
 		//when we try to replace text,
 		//the onReplace will be called,
@@ -498,7 +502,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		//we replace in this way to simplify our code
 		//:)
 		//it will be called before we call methods {Document#delete} and {Document#insert}
-		void onReplace(Document doc);
+		void onReplace(EditorText doc);
 
 	}
 
@@ -575,7 +579,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		//Start:UndoStack:Listener-----------------------------
 
 		@Override
-		public void onInsert(Document doc, int index, CharSequence textToInsert) {
+		public void onInsert(EditorText doc, int index, CharSequence textToInsert) {
 			if (ignoreChange||!enabled) {
 				//ignore changes
 				return;
@@ -592,7 +596,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		}
 
 		@Override
-		public void onDelete(Document doc, int index, CharSequence textDeleted) {
+		public void onDelete(EditorText doc, int index, CharSequence textDeleted) {
 			if (ignoreChange||!enabled) {
 				//ignore changes
 				return;
@@ -607,7 +611,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		}
 
 		@Override
-		public void onReplace(Document doc) {
+		public void onReplace(EditorText doc) {
 			if (ignoreChange||!enabled) {
 				//ignore changes
 				return;
@@ -700,7 +704,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 
 		//undo the text if available
 		//return if the action is successfully done
-		public boolean undo(Document doc) {
+		public boolean undo(EditorText doc) {
 			if (canUndo()) {
 				ignoreChange = true;
 				stack.get
@@ -714,7 +718,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 
 		//redo the text if available
 		//return if the action is successfully done
-		public boolean redo(Document doc) {
+		public boolean redo(EditorText doc) {
 			if (canRedo()) {
 				ignoreChange = true;
 				stack.get(curr + 1).redo(doc);
@@ -732,10 +736,10 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		private interface Action {
 
 			//undo action on {doc}
-			void undo(Document doc);
+			void undo(EditorText doc);
 
 			//redo action on {doc}
-			void redo(Document doc);
+			void redo(EditorText doc);
 
 			//whether can merge with {action}
 			boolean canMerge(Action action);
@@ -763,12 +767,12 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 			}
 
 			@Override
-			public void undo(Document doc) {
+			public void undo(EditorText doc) {
 				doc.insert(index, text);
 			}
 
 			@Override
-			public void redo(Document doc) {
+			public void redo(EditorText doc) {
 				doc.delete(index, text.length());
 			}
 
@@ -810,12 +814,12 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 			}
 
 			@Override
-			public void redo(Document doc) {
+			public void redo(EditorText doc) {
 				doc.insert(index, text);
 			}
 
 			@Override
-			public void undo(Document doc) {
+			public void undo(EditorText doc) {
 				doc.delete(index, text.length());
 			}
 
@@ -858,13 +862,13 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 			}
 
 			@Override
-			public void undo(Document doc) {
+			public void undo(EditorText doc) {
 				doc.delete(index, nw.length());
 				doc.insert(index, ori);
 			}
 
 			@Override
-			public void redo(Document doc) {
+			public void redo(EditorText doc) {
 				doc.delete(index, ori.length());
 				doc.insert(index, nw);
 			}
@@ -872,12 +876,12 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 			//Replace do not support merge
 
 			@Override
-			public boolean canMerge(Document.UndoStack.Action action) {
+			public boolean canMerge(EditorText.UndoStack.Action action) {
 				return false;
 			}
 
 			@Override
-			public void merge(Document.UndoStack.Action action) {
+			public void merge(EditorText.UndoStack.Action action) {
 				throw new IllegalArgumentException("action not supported");
 			}
 
@@ -903,14 +907,14 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 			}
 
 			@Override
-			public void redo(Document doc) {
+			public void redo(EditorText doc) {
 				for(int i=actions.size()-1;i>-1;i--){
 					actions.get(i).redo(doc);
 				}
 			}
 
 			@Override
-			public void undo(Document doc) {
+			public void undo(EditorText doc) {
 				for(int i=actions.size()-1;i>-1;i--){
 					actions.get(i).undo(doc);
 				}
@@ -919,12 +923,12 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 			//MultiAction do not support merge
 
 			@Override
-			public boolean canMerge(Document.UndoStack.Action action) {
+			public boolean canMerge(EditorText.UndoStack.Action action) {
 				return false;
 			}
 
 			@Override
-			public void merge(Document.UndoStack.Action action) {
+			public void merge(EditorText.UndoStack.Action action) {
 				throw new IllegalArgumentException("action not supported");
 			}
 
@@ -943,12 +947,13 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		public final static int ADD_LINE = 100;
 
 		private Pair zeroPoint;
+		private Pair endPoint;
 		private ArrayList<Pair> pairs;
 		private int lineCount;
 		private int max_capcity;
-		private Document serveTarget;
+		private EditorText serveTarget;
 
-		public LineIndexProvider(Document doc){
+		public LineIndexProvider(EditorText doc){
 			serveTarget = doc;
 			zeroPoint = new Pair(0,0);
 			pairs = new ArrayList<Pair>();
@@ -956,6 +961,20 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 			lineCount = 1;
 			if(doc.length() != 0)
 				this.onInsert(doc,0,doc);
+		}
+
+		private void updateEndPoint(){
+			if(endPoint == null){
+				endPoint = new Pair(0,0);
+			}
+			endPoint.first = lineCount - 1;
+			int i = lastIndexOf(serveTarget,serveTarget.length()-1,'\n');
+			if(i == -1){
+				//there is only one line
+				endPoint.first = endPoint.second = 0;
+			}else{
+				endPoint.second = i;
+			}
 		}
 
 		private void addPair(int line, int index) {
@@ -1011,20 +1030,12 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		}
 
 		private int indexOf(CharSequence s,int start,char c){
-			for(int i = start;i < s.length();i++){
-				if(s.charAt(i)==c){
-					return i;
-				}
-			}
+			for(int i = start;i < s.length();i++) if(s.charAt(i)==c) return i;
 			return -1;
 		}
 
 		private int lastIndexOf(CharSequence s,int start,char c){
-			for(int i=start;i>0;i--){
-				if(s.charAt(i)==c){
-					return i;
-				}
-			}
+			for(int i=start;i>0;i--) if(s.charAt(i)==c) return i;
 			return -1;
 		}
 
@@ -1039,7 +1050,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 			if(line < 0 || line >= lineCount){
 				throw new IndexOutOfBoundsException("line index out of bounds");
 			}
-			Pair pair = getNearestPair(line);
+			Pair pair = getNearestPairWrapped(line);
 			int distance = line - pair.first;
 			if(distance == 0){
 				return pair.second;
@@ -1063,10 +1074,92 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 			return getLineStart(line + 1);
 		}
 
+		private Pair getNearestPairByIndex(int index){
+			int i = -1;
+			int d = index;
+			for(int j = 0;j < pairs.size();j++){
+				Pair pair = pairs.get(j);
+				int nd = Math.abs(index - pair.second);
+				if(nd < d){
+					i = j;
+					d = nd;
+				}
+			}
+			Pair pair = (i == -1) ? zeroPoint : pairs.get(i);
+
+			if(i != -1){
+				pairs.remove(pair);
+				pairs.add(pair);
+			}
+
+			return pair;
+		}
+
+		private Pair getNearestPairByIndexWrapped(int index){
+			Pair pair = getNearestPairByIndex(index);
+			int d = Math.abs(pair.second - index);
+			int td = Math.abs(endPoint.second - index);
+			return (d <= td) ? pair : endPoint;
+		}
+
+		private Pair getNearestPairWrapped(int line){
+			Pair pair = getNearestPair(line);
+			int d = Math.abs(pair.first - line);
+			int td = Math.abs(endPoint.first - line);
+			return (d <= td) ? pair : endPoint;
+		}
+
+		public int getLineByIndex(int index){
+			if(index < 0 || index >= serveTarget.length()){
+				throw new StringIndexOutOfBoundsException("index out of bounds");
+			}
+			Pair pair = getNearestPairByIndexWrapped(index);
+			int dis = pair.second - index;
+			if(dis == 0){
+				return pair.first;
+			}else{
+				int line = (dis<0)?findUtil_Forward(pair,index):findUtil_Backward(pair,index);
+				return line;
+			}
+		}
+		
+		private int findUtil_Backward(Pair pair,int index){
+			int line = pair.first;
+			int i = pair.second;
+			Pair cache = new Pair(0,0);
+			while(i > index){
+				cache.first = line;
+				cache.second = i;
+				i = findBackward(cache,1);
+				if(i == -1){
+					return 0;
+				}
+				line--;
+			}
+			return line;
+		}
+		
+		private int findUtil_Forward(Pair pair,int index){
+			int line = pair.first;
+			int i = pair.second;
+			Pair cache = new Pair(0,0);
+			while(i < index){
+				cache.first = line;
+				cache.second = i;
+				i = findForward(cache,1);
+				if(i == -1){
+					return lineCount - 1;
+				}
+				line++;
+			}
+			return line -1;
+		}
+
 		@Override
-		public void onInsert(Document doc, int index, CharSequence textToInsert) {
+		public void onInsert(EditorText doc, int index, CharSequence textToInsert) {
 			int dL;
 			lineCount += ( dL=getNewLineTokenCount(textToInsert) );
+			updateEndPoint();
 			for(Pair pair : pairs){
 				if(index > pair.second){
 					//no effect
@@ -1078,9 +1171,10 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		}
 
 		@Override
-		public void onDelete(Document doc, int index, CharSequence textDeleted) {
+		public void onDelete(EditorText doc, int index, CharSequence textDeleted) {
 			int dL;
 			lineCount -= ( dL = getNewLineTokenCount(textDeleted) );
+			updateEndPoint();
 			for(Pair pair : pairs){
 				if(index > pair.second){
 					//no effect
@@ -1110,7 +1204,7 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 		}
 
 		@Override
-		public void onReplace(Document doc) {
+		public void onReplace(EditorText doc) {
 			//do nothing.
 			//the duty is onDelete and onInsert's
 		}
@@ -1149,4 +1243,4 @@ public class Document implements CharSequence,Appendable,Cloneable,Editable {
 
 	//End:Internal Classes------------------------------
 
-}//Document end
+}//EditorText end
