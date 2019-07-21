@@ -3,8 +3,11 @@ package com.rose.android.util;
 import java.util.ArrayList;
 import android.text.Editable;
 import android.text.InputFilter;
+import java.lang.reflect.Array;
 
 //Created By Rose on 2019/7/17
+//DEPRECATED!
+//Many bugs in this file.
 
 //EditorText begin
 //Ability:
@@ -26,7 +29,7 @@ import android.text.InputFilter;
 //  And it is also the raw target of it
 //  Also,you can call getLineCount() to get how many lines there is
 //
-//  :)
+//  :(
 public class EditorText implements CharSequence,Appendable,Cloneable,Editable {
 	public final static int DEFAULT_CAPCITY = 100;
 
@@ -152,6 +155,12 @@ public class EditorText implements CharSequence,Appendable,Cloneable,Editable {
 
 	//delete text with region [index,index+length)
 	public EditorText delete(int index, int length) {
+		if(length == 0){
+			editFlag = true;
+			dispatchBeforeDelete(0,"");
+			editFlag = false;
+			return this;
+		}
 		checkIndex(index);
 		checkIndex(index + length - 1);
 		checkState();
@@ -462,7 +471,7 @@ public class EditorText implements CharSequence,Appendable,Cloneable,Editable {
 
 	@Override
 	public <T extends Object> T[] getSpans(int start, int end, Class<T> type) {
-		return null;
+		return (T[])Array.newInstance(type,0);
 	}
 
 	@Override
@@ -978,6 +987,9 @@ public class EditorText implements CharSequence,Appendable,Cloneable,Editable {
 		}
 
 		private void addPair(int line, int index) {
+			if(true){
+				return;
+			}
 			pairs.add(new Pair(line, index));
 			while (pairs.size() > max_capcity) {
 				pairs.remove(0);
@@ -1185,13 +1197,17 @@ public class EditorText implements CharSequence,Appendable,Cloneable,Editable {
 					int xDl = getNewLineTokenCount(doc.subSequence(index,pair.second+1));
 					pair.first -= xDl;
 					try{
+						if(lastIndexOf(serveTarget,index-1,'\n')==-1){
+							pairs.remove(pair);
+							continue;
+						}
 						int nI = findBackward(new Pair(pair.first,index),1);
 
 						//reached start of document,it is zeroPosint
-						if(nI == -1)
+						if(nI == -1 || pair.first<=0)
 							pairs.remove(pair);
 
-						System.out.println("Pair:first="+pair.first+" second="+pair.second);
+						//System.out.println("Pair:first="+pair.first+" second="+pair.second);
 
 						pair.second = nI;
 					}catch(Exception e){

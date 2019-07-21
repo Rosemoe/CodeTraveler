@@ -13,7 +13,7 @@ import android.graphics.Typeface;
 import android.graphics.Color;
 import android.view.inputmethod.BaseInputConnection;
 import android.text.Editable;
-import com.rose.android.util.EditorText;
+import com.rose.android.util.a.EditorText;
 import android.view.KeyEvent;
 import android.graphics.Canvas;
 import android.view.inputmethod.InputConnection;
@@ -24,13 +24,16 @@ import android.view.MotionEvent;
 import com.rose.android.util.EditorTouch;
 import android.view.GestureDetector;
 import android.view.ScaleGestureDetector;
+import android.widget.Toast;
+import com.rose.android.util.a.TextWatcherR;
 
 //Created By Rose on 2019/7/20
 
-public class CodeEditor extends View implements EditorText.DocumentChangeListener {
+public class CodeEditor extends View implements TextWatcherR {
 	
 	//TODO
 	private EditorText mText;
+	private EditorSelection mSel;
 	private Paint mPaint;
 	private EditorStyle mStyle;
 	
@@ -81,13 +84,16 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 	public void setText(CharSequence text){
 		//TODO
 		if(mText != null){
-			mText.removeDocumentChangeListener(this);
+			mText.removeWatcher(this);
 		}
 		mText = new EditorText(text);
-		mText.addDocumentChangeListener(this);
-		
+		mText.addWatcher(this);
+		mState.resetForNewText();
+		if(mSel == null){
+			mSel = new EditorSelection();
+		}
+		mSel.resetForNewText();
 		requestLayout();
-		
 		invalidate();
 	}
 	
@@ -116,16 +122,49 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 	public boolean onGenericMotionEvent(MotionEvent event) {
 		return mDetector_Basic.onGenericMotionEvent(event);
 	}
+
+	@Override
+	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+		
+		//we do not calculate our width beacause it might use plenty of time
+		if(MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.AT_MOST){
+			//fiil all the available area by default
+			widthMeasureSpec = MeasureSpec.makeMeasureSpec(MeasureSpec.EXACTLY,MeasureSpec.getSize(widthMeasureSpec));
+		}
+		
+		if(MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.AT_MOST){
+			int height = (int)mStyle.getLineHeight() * getLineCount();
+			int aHeight = MeasureSpec.getSize(heightMeasureSpec);
+			if(height > aHeight){
+				height = aHeight;
+			}
+			heightMeasureSpec = MeasureSpec.makeMeasureSpec(MeasureSpec.EXACTLY,height);
+		}
+		
+		mState.setScrollMaxX(MeasureSpec.getSize(widthMeasureSpec)*3);
+		mState.setScrollMaxY(getLineCount() * (int)mStyle.getLineHeight() - MeasureSpec.getSize(heightMeasureSpec));
+		
+		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+	}
 	
 	//---------------------------------------
 	
 	@Override
 	protected void onDraw(Canvas canvas){
 		super.onDraw(canvas);
+		//Toast.makeText(getContext(),"OffX = " + mState.getOffsetX() + " OffY = "+mState.getOffsetY(),Toast.LENGTH_SHORT).show();
 		for(int i = getFirstVisableLine();i <= getLastVisableLine();i++){
-			canvas.drawText(mText,(i!=0)?getLineStart(i)+1:0,getLineEnd(i),10,getLineBaseline(i),mPaint);
+			canvas.drawText(mText,(i!=0)?getLineStart(i)+1:0,getLineEnd(i),10-mState.getOffsetX(),getLineBaseline(i)-mState.getOffsetY(),mPaint);
 			//canvas.drawLine(0,getLineBaseline(i),getWidth(),getLineBaseline(i)+2,mPaint);
 		}
+	}
+
+	@Override
+	public void computeScroll() {
+		if(mState.getScroller().computeScrollOffset()){
+			invalidate();
+		}
+		super.computeScroll();
 	}
 	
 	//---------------------------------------
@@ -164,18 +203,18 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 	//---------------------------------------
 	
 	@Override
-	public void onReplace(EditorText doc) {
+	public void onReplace(Editable doc) {
 		//do nothing
 	}
 
 	@Override
-	public void onInsert(EditorText doc, int index, CharSequence textToInsert) {
+	public void onInsert(Editable doc, int index, CharSequence textToInsert) {
 		invalidate();
 		//TODO
 	}
 
 	@Override
-	public void onDelete(EditorText doc, int index, CharSequence textDeleted) {
+	public void onDelete(Editable doc, int index, CharSequence textDeleted) {
 		invalidate();
 		//TODO
 	}
@@ -200,6 +239,7 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 		outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT;
 		outAttrs.initialSelStart = Selection.getSelectionStart(mText);
 		outAttrs.initialSelEnd = Selection.getSelectionEnd(mText);
+		mText.resetBatchEdit();
 		return (isEditable()) ? new EditorInputConnection() : null;
 	}
 	
@@ -212,13 +252,52 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 		}
 
 		@Override
+		public boolean commitText(CharSequence text, int newCursorPosition) {
+			int start = mSel.getStart();
+			int end = mSel.getEnd();
+			if(start != end){
+				mText.delete(start,end - start);
+			}
+			mText.insert(start,text);
+			mSel.setSelection(start + text.length());
+			return true;
+		}
+
+		@Override
+		public boolean deleteSurroundingText(int beforeLength, int afterLength) {
+			mSel.setSelection(mSel.getStart() - (mSel.getEnd()!=mSel.getStart()?0:1));
+			return super.deleteSurroundingText(beforeLength, afterLength);
+		}
+
+		@Override
 		public Editable getEditable() {
 			return isEditable()?getEditableText():null;
 		}
 
 		@Override
 		public boolean sendKeyEvent(KeyEvent event) {
-			//TODO
+			if(event.getAction() == event.ACTION_DOWN){
+				switch(event.getKeyCode()){
+					case KeyEvent.KEYCODE_DEL:
+					{
+						int start = mSel.getStart();
+						int end = mSel.getEnd();
+						if(start != end){
+							mText.delete(start,end - start);
+							mSel.setSelection(start);
+						}else if(start > 0){
+							mText.delete(start-1,1);
+							mSel.setSelection(start-1);
+						}
+						break;
+					}
+					case KeyEvent.KEYCODE_ENTER:
+					{
+						commitText("\n",1);
+						break;
+					}
+				}
+			}
 			return super.sendKeyEvent(event);
 		}
 
@@ -232,6 +311,51 @@ public class CodeEditor extends View implements EditorText.DocumentChangeListene
 		public boolean endBatchEdit() {
 			mText.endBatchEdit();
 			return super.endBatchEdit();
+		}
+		
+	}
+	
+	public class EditorSelection{
+		
+		private int start;
+		
+		private int end;
+		
+		public EditorSelection(){
+			start = end = 0;
+		}
+		
+		protected void resetForNewText(){
+			start = end = 0;
+		}
+		
+		private int wrap(int i){
+			if(i<0){
+				i=0;
+			}
+			if(i>mText.length()){
+				i = mText.length();
+			}
+			return i;
+		}
+		
+		public void setSelection(int i){
+			start = end = wrap(i);
+		}
+		
+		public void setSelection(int start,int end){
+			start = wrap(start);
+			end = wrap(end);
+			this.start = Math.min(start,end);
+			this.end = Math.max(start,end);
+		}
+		
+		public int getStart(){
+			return start;
+		}
+		
+		public int getEnd(){
+			return end;
 		}
 		
 	}
