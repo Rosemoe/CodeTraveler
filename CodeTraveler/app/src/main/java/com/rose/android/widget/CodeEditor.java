@@ -2,38 +2,34 @@ package com.rose.android.widget;
 
 //Created By Rose on 2019/7/19
 
-import android.view.View;
-import android.content.Context;
-import android.util.AttributeSet;
 import android.annotation.TargetApi;
-import android.os.Build;
-import android.graphics.Paint;
-import android.text.TextPaint;
-import android.graphics.Typeface;
-import android.graphics.Color;
-import android.view.inputmethod.BaseInputConnection;
-import android.text.Editable;
-import com.rose.android.util.a.EditorText;
-import android.view.KeyEvent;
+import android.content.Context;
 import android.graphics.Canvas;
-import android.view.inputmethod.InputConnection;
-import android.view.inputmethod.EditorInfo;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Typeface;
+import android.os.Build;
+import android.text.Editable;
 import android.text.Selection;
-import android.widget.OverScroller;
-import android.view.MotionEvent;
-import com.rose.android.util.EditorTouch;
+import android.text.TextPaint;
+import android.util.AttributeSet;
 import android.view.GestureDetector;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
-import android.widget.Toast;
+import android.view.View;
+import android.view.inputmethod.BaseInputConnection;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
+import com.rose.android.util.EditorTouch;
+import com.rose.android.util.a.EditorText;
 import com.rose.android.util.a.TextWatcherR;
-
-//Created By Rose on 2019/7/20
+import android.widget.Toast;
 
 public class CodeEditor extends View implements TextWatcherR {
 	
 	//TODO
 	private EditorText mText;
-	private EditorSelection mSel;
 	private Paint mPaint;
 	private EditorStyle mStyle;
 	
@@ -82,17 +78,12 @@ public class CodeEditor extends View implements TextWatcherR {
 	//---------------------------------------
 	
 	public void setText(CharSequence text){
-		//TODO
 		if(mText != null){
 			mText.removeWatcher(this);
 		}
 		mText = new EditorText(text);
 		mText.addWatcher(this);
 		mState.resetForNewText();
-		if(mSel == null){
-			mSel = new EditorSelection();
-		}
-		mSel.resetForNewText();
 		requestLayout();
 		invalidate();
 	}
@@ -115,11 +106,24 @@ public class CodeEditor extends View implements TextWatcherR {
 	
 	@Override
 	public boolean onTouchEvent(MotionEvent event){
-		return mDetector_Basic.onTouchEvent(event)||mDetector_Scale.onTouchEvent(event);
+		if(!isEnabled()){
+			return false;
+		}
+		int thumb = event.getPointerCount();
+		if(thumb == 1){
+			return mDetector_Basic.onTouchEvent(event)||mDetector_Scale.onTouchEvent(event);
+		}else if(thumb == 2){
+			return mDetector_Scale.onTouchEvent(event);
+		}else{
+			return false;
+		}
 	}
 
 	@Override
 	public boolean onGenericMotionEvent(MotionEvent event) {
+		if(isEnabled()){
+			return false;
+		}
 		return mDetector_Basic.onGenericMotionEvent(event);
 	}
 
@@ -142,7 +146,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		}
 		
 		mState.setScrollMaxX(MeasureSpec.getSize(widthMeasureSpec)*3);
-		mState.setScrollMaxY(getLineCount() * (int)mStyle.getLineHeight() - MeasureSpec.getSize(heightMeasureSpec));
+		mState.setScrollMaxY(getLineCount() * (int)mStyle.getLineHeight() - MeasureSpec.getSize(heightMeasureSpec)/2);
 		
 		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 	}
@@ -152,11 +156,29 @@ public class CodeEditor extends View implements TextWatcherR {
 	@Override
 	protected void onDraw(Canvas canvas){
 		super.onDraw(canvas);
-		//Toast.makeText(getContext(),"OffX = " + mState.getOffsetX() + " OffY = "+mState.getOffsetY(),Toast.LENGTH_SHORT).show();
+		//Toast.makeText(getContext(),Integer.toString(getLineCount()),0).show();
+		drawLineNumbers(canvas);
+		drawDividerLine(canvas);
+		float cost = mPaint.measureText(Integer.toString(getLineCount())) + 10f;
 		for(int i = getFirstVisableLine();i <= getLastVisableLine();i++){
-			canvas.drawText(mText,(i!=0)?getLineStart(i)+1:0,getLineEnd(i),10-mState.getOffsetX(),getLineBaseline(i)-mState.getOffsetY(),mPaint);
-			//canvas.drawLine(0,getLineBaseline(i),getWidth(),getLineBaseline(i)+2,mPaint);
+			//canvas.drawText(Integer.toString(i+1),-mState.getOffsetX(),getLineBaseline(i)-mState.getOffsetY(),mPaint);
+			canvas.drawText(mText,getLineStart(i),getLineEnd(i),10+cost-mState.getOffsetX(),getLineBaseline(i)-mState.getOffsetY(),mPaint);
+			//float maxX = mPaint.measureText(mText,getLineStart(i),getLineEnd(i));
+			//mState.setScrollMaxX((int)maxX);
 		}
+	}
+	
+	private void drawLineNumbers(Canvas canvas){
+		int i = getFirstVisableLine();
+		int m = getLastVisableLine();
+		for(;i <= m;i++){
+			canvas.drawText(Integer.toString(i+1), - mState.getOffsetX(), getLineBaseline(i) - mState.getOffsetY(),mPaint);
+		}
+	}
+	
+	private void drawDividerLine(Canvas canvas){
+		float left = mPaint.measureText(Integer.toString(getLineCount()));
+		canvas.drawLine(left-mState.getOffsetX()+5,0,left-mState.getOffsetX()+10,getHeight(),mPaint);
 	}
 
 	@Override
@@ -170,18 +192,17 @@ public class CodeEditor extends View implements TextWatcherR {
 	//---------------------------------------
 	
 	public int getFirstVisableLine(){
-		//TODO
-		return 0;
+		return (mState.getOffsetY()/(int)mStyle.getLineHeight())-1;
 	}
 	
 	public int getLastVisableLine(){
-		//TODO
-		return getLineCount() - 1;
+		int l = (mState.getOffsetY() + getHeight())/(int)getLineBaseline(0) + 2;
+		return (l<getLineCount()?l:getLineCount() -1);
 	}
 	
 	public float getLineBaseline(int line){
 		//TODO
-		return mPaint.getTextSize() * (line)+ mPaint.getTextSize() * 3 / 4;
+		return mStyle.getLineHeight() * (line)+ mPaint.getTextSize() * 3 / 4;
 	}
 	
 	public int getLineCount(){
@@ -209,12 +230,15 @@ public class CodeEditor extends View implements TextWatcherR {
 
 	@Override
 	public void onInsert(Editable doc, int index, CharSequence textToInsert) {
+		mState.setScrollMaxY(getLineCount() * (int)mStyle.getLineHeight() - getHeight()/2);
+		
 		invalidate();
 		//TODO
 	}
 
 	@Override
 	public void onDelete(Editable doc, int index, CharSequence textDeleted) {
+		mState.setScrollMaxY(getLineCount() * (int)mStyle.getLineHeight() - getHeight()/2);
 		invalidate();
 		//TODO
 	}
@@ -253,25 +277,17 @@ public class CodeEditor extends View implements TextWatcherR {
 
 		@Override
 		public boolean commitText(CharSequence text, int newCursorPosition) {
-			int start = mSel.getStart();
-			int end = mSel.getEnd();
-			if(start != end){
-				mText.delete(start,end - start);
-			}
-			mText.insert(start,text);
-			mSel.setSelection(start + text.length());
-			return true;
+			return super.commitText(text,newCursorPosition);
 		}
 
 		@Override
 		public boolean deleteSurroundingText(int beforeLength, int afterLength) {
-			mSel.setSelection(mSel.getStart() - (mSel.getEnd()!=mSel.getStart()?0:1));
 			return super.deleteSurroundingText(beforeLength, afterLength);
 		}
 
 		@Override
 		public Editable getEditable() {
-			return isEditable()?getEditableText():null;
+			return isEditable() ? getEditableText() : null;
 		}
 
 		@Override
@@ -279,23 +295,11 @@ public class CodeEditor extends View implements TextWatcherR {
 			if(event.getAction() == event.ACTION_DOWN){
 				switch(event.getKeyCode()){
 					case KeyEvent.KEYCODE_DEL:
-					{
-						int start = mSel.getStart();
-						int end = mSel.getEnd();
-						if(start != end){
-							mText.delete(start,end - start);
-							mSel.setSelection(start);
-						}else if(start > 0){
-							mText.delete(start-1,1);
-							mSel.setSelection(start-1);
-						}
-						break;
-					}
+						deleteSurroundingText(1,0);
+						return true;
 					case KeyEvent.KEYCODE_ENTER:
-					{
 						commitText("\n",1);
-						break;
-					}
+						return true;
 				}
 			}
 			return super.sendKeyEvent(event);
@@ -311,51 +315,6 @@ public class CodeEditor extends View implements TextWatcherR {
 		public boolean endBatchEdit() {
 			mText.endBatchEdit();
 			return super.endBatchEdit();
-		}
-		
-	}
-	
-	public class EditorSelection{
-		
-		private int start;
-		
-		private int end;
-		
-		public EditorSelection(){
-			start = end = 0;
-		}
-		
-		protected void resetForNewText(){
-			start = end = 0;
-		}
-		
-		private int wrap(int i){
-			if(i<0){
-				i=0;
-			}
-			if(i>mText.length()){
-				i = mText.length();
-			}
-			return i;
-		}
-		
-		public void setSelection(int i){
-			start = end = wrap(i);
-		}
-		
-		public void setSelection(int start,int end){
-			start = wrap(start);
-			end = wrap(end);
-			this.start = Math.min(start,end);
-			this.end = Math.max(start,end);
-		}
-		
-		public int getStart(){
-			return start;
-		}
-		
-		public int getEnd(){
-			return end;
 		}
 		
 	}
@@ -389,6 +348,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		
 		public void setTextSize(float size){
 			mPaint.setTextSize(size);
+			mState.setScrollMaxY(getLineCount() * (int)mStyle.getLineHeight() - getHeight()/2);
 			invalidate();
 		}
 		

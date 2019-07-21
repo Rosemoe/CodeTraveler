@@ -110,7 +110,7 @@ public class EditorTouch implements OnGestureListener,OnContextClickListener,OnD
 
 	@Override
 	public boolean onScale(ScaleGestureDetector detector) {
-		float newSize = detector.getScaleFactor() * originalTextSize;
+		float newSize = detector.getScaleFactor() * editor.getStyles().getTextSize();
 		if(newSize > 100){
 			editor.getStyles().setTextSize(newSize);
 			return false;
