@@ -25,6 +25,7 @@ import com.rose.android.util.EditorTouch;
 import com.rose.android.util.a.EditorText;
 import com.rose.android.util.a.TextWatcherR;
 import android.widget.Toast;
+import com.rose.android.Debug;
 
 public class CodeEditor extends View implements TextWatcherR {
 	
@@ -109,7 +110,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		mText.addWatcher(this);
 		//reset states
 		mState.resetForNewText();
-		
+		Selection.setSelection(mText,0);
 		//request layout due to attribute "wrap_content"
 		requestLayout();
 		//refresh display
@@ -212,12 +213,15 @@ public class CodeEditor extends View implements TextWatcherR {
 	//---------------------------------------
 	
 	private float offsetX;
+	private int CurrLine;
 	
 	@Override
 	protected void onDraw(Canvas canvas){
 		//call super to draw background.
 		super.onDraw(canvas);
 		offsetX = -mState.getOffsetX();
+		
+		drawCurrLineBackground(canvas);
 		
 		if(mStyle.showLineNumber){
 			drawLineNumbers(canvas);
@@ -232,11 +236,15 @@ public class CodeEditor extends View implements TextWatcherR {
 		int i = getFirstVisableLine();
 		int m = getLastVisableLine();
 		for(;i<=m;i++){
-			drawLine_debug(mText,getLineStart(i),getLineEnd(i),offsetX,getLineBaseline(i)-mState.getOffsetY(),canvas);
+			drawLine_debug(mText,i,offsetX,getLineBaseline(i)-mState.getOffsetY(),canvas);
 		}
 	}
 	
-	private void drawLine_debug(CharSequence s,int st,int en,float x,float y,Canvas c){
+	private void drawLine_debug(CharSequence s,int li,float x,float y,Canvas c){
+		int st = getLineStart(li);
+		int en = getLineEnd(li);
+		int start = Selection.getSelectionStart(mText);
+		drawCursorIfHereIs(start,st,x,li,c);
 		for(int i = st;i < en;i++){
 			if(s.charAt(i)=='\t'){
 				x += mPaint.measureText("    ");
@@ -244,7 +252,34 @@ public class CodeEditor extends View implements TextWatcherR {
 				c.drawText(s,i,i+1,x,y,mPaint);
 				x += mPaint.measureText(s,i,i+1);
 			}
+			drawCursorIfHereIs(start,i,x,li,c);
 		}
+		try{
+			if(s.length() == en)
+				drawCursorIfHereIs(start,en,x,li,c);
+		}catch(IndexOutOfBoundsException e){
+		}
+	}
+	
+	private void drawCursorIfHereIs(int cursorPos,int index,float offsetX,int line,Canvas c){
+		if(cursorPos == index && CurrLine == line){
+			int backup = mPaint.getColor();
+			mPaint.setColor(Color.BLACK);
+			mPaint.setStrokeWidth(2);
+			c.drawLine(offsetX,mStyle.getLineTop(line)-mState.getOffsetY(),offsetX,mStyle.getLineBottom(line)-mState.getOffsetY(),mPaint);
+			mPaint.setColor(backup);
+			//Debug.debug("DrawCursor"+line);
+		}
+	}
+	
+	private void drawCurrLineBackground(Canvas canvas){
+		int charOffset = Selection.getSelectionStart(mText);
+		int line = getLineByIndex(charOffset);
+		CurrLine = line;
+		mPaint.setColor(mStyle.lineColor);
+		float top = getLineBaseline(line) + mPaint.ascent() - mState.getOffsetY();
+		float bot = top + mStyle.getLineHeight();
+		canvas.drawRect(0,top,getWidth(),bot,mPaint);
 	}
 	
 	private void drawLineNumbers(Canvas canvas){
@@ -302,7 +337,19 @@ public class CodeEditor extends View implements TextWatcherR {
 	}
 
 	public int getLineStart(int line){
-		return mText.getLineStart(line);
+		//due to not get the wrong start
+		//beacause LineManager ususlly return
+		//the '\n' as the line start
+		//we would like to prevent it
+		int i = mText.getLineStart(line);
+		try{
+			if(mText.charAt(i)=='\n'){
+				i++;
+			}
+		}catch(IndexOutOfBoundsException e){
+			//do nothing
+		}
+		return i;
 	}
 
 	public int getLineEnd(int line){
@@ -419,6 +466,7 @@ public class CodeEditor extends View implements TextWatcherR {
 	public class EditorStyle{
 		
 		private int defaultTextColor = Color.BLACK;
+		private int lineColor = 0x66ec407a;
 		private int lineNumberColor = 0xff3f51b5;
 		private int dividerLineColor = 0xff3f51b5;
 		private boolean showLineNumber = true;
@@ -475,6 +523,14 @@ public class CodeEditor extends View implements TextWatcherR {
 			return (getLineRealHeight() + getLineDistancePixel());
 		}
 		
+		public float getLineTop(int line){
+			return getLineBaseline(line) + mPaint.ascent();
+		}
+		
+		public float getLineBottom(int line){
+			return getLineTop(line) + getLineHeight();
+		}
+		
 		public float getLineRealHeight(){
 			Paint.FontMetricsInt ints = mPaint.getFontMetricsInt();
 			return  (ints.descent - ints.ascent);
@@ -524,9 +580,25 @@ public class CodeEditor extends View implements TextWatcherR {
 			invalidate();
 		}
 		
+		public int getLineNumberColor(){
+			return lineNumberColor;
+		}
+		
 		public void setDividerColor(int c){
 			dividerLineColor=c;
 			invalidate();
+		}
+		
+		public int getDividerColor(){
+			return dividerLineColor;
+		}
+		
+		public void setCurrentLineColor(int c){
+			lineColor = c;
+		}
+		
+		public int getCurrentLineColor(){
+			return lineColor;
 		}
 	}
 	

@@ -6,7 +6,7 @@ import com.rose.android.Debug;
 
 //Created By Rose on 2019/7/21
 
-public class LineManager implements TextWatcherR {
+public class LineManager implements TextWatcherR ,ActionEndListener{
 
 	private int lineCount = 1;
 	private Editable serveTarget;
@@ -54,7 +54,7 @@ public class LineManager implements TextWatcherR {
 		for(int i = pairs.size()-1;i > -1;i--){
 			Pair pair = pairs.get(i);
 			int newDistance = Math.abs(pair.first - line);
-			if(newDistance < bestDistance/* && (pair.first-line)<0*/){
+			if(newDistance < bestDistance){
 				bestDistance = newDistance;
 				bestIndex = i;
 			}
@@ -120,17 +120,17 @@ public class LineManager implements TextWatcherR {
 		if(line < 0 || line >= lineCount){
 			throw new IndexOutOfBoundsException("line index out of bounds");
 		}
-		Pair pair = getNearestPair(line);
+		Pair pair = getNearestPairWrapped(line);
 		int distance = line - pair.first;
 		if(distance == 0){
-			return pair.second + 1;
+			return pair.second;
 		}else{
 			int absDistance = Math.abs(distance);
 			int index = distance < 0 ? findBackward(pair,absDistance) : findForward(pair,absDistance);
 			if(absDistance >= add_switch){
 				addPair(line,index);
 			}
-			return line != 0 ? index + 1 : index;
+			return index;
 		}
 	}
 
@@ -141,15 +141,9 @@ public class LineManager implements TextWatcherR {
 		if(line == getLineCount() - 1){
 			return serveTarget.length();
 		}
-		return getLineStart(line + 1) - 1;
-	}
-	
-	//TODO
-	public int getLineByIndex(int x){
-		return x;
+		return getLineStart(line + 1);
 	}
 
-	/*
 	private Pair getNearestPairByIndex(int index){
 		int i = -1;
 		int d = index;
@@ -186,7 +180,10 @@ public class LineManager implements TextWatcherR {
 	}
 
 	public int getLineByIndex(int index){
-		if(index < 0 || index >= serveTarget.length()){
+		if(index == serveTarget.length()){
+			return lineCount - 1;
+		}
+		if(index < 0 || index > serveTarget.length()){
 			throw new StringIndexOutOfBoundsException("index out of bounds");
 		}
 		Pair pair = getNearestPairByIndexWrapped(index);
@@ -230,14 +227,11 @@ public class LineManager implements TextWatcherR {
 		}
 		return line -1;
 	}
-	
-	*/
 
 	@Override
 	public void onInsert(Editable doc, int index, CharSequence textToInsert) {
 		int dL;
 		lineCount += ( dL=getNewLineTokenCount(textToInsert) );
-		updateEndPoint();
 		//update pairs
 		for(Pair pair : pairs){
 			if(index > pair.second){
@@ -259,7 +253,6 @@ public class LineManager implements TextWatcherR {
 	public void onDelete(Editable doc, int index, CharSequence textDeleted) {
 		int dL;
 		lineCount -= ( dL = getNewLineTokenCount(textDeleted) );
-		updateEndPoint();
 		//update pairs
 		for(Pair pair : pairs){
 			if(index > pair.second){
@@ -311,6 +304,14 @@ public class LineManager implements TextWatcherR {
 		//do nothing.
 		//the duty is onDelete and onInsert's
 	}
+
+	@Override
+	public void onEnd() {
+		//If we updated at other time
+		//the text index will be wrong
+		updateEndPoint();
+	}
+	
 
 	//Get how many '\n' there are in target CharSequence object
 	private int getNewLineTokenCount(CharSequence s){

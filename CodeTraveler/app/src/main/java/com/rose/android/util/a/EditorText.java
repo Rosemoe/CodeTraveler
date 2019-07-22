@@ -24,6 +24,7 @@ public class EditorText extends SpannableStringBuilder{
 		if(this.length() != 0)
 			lines.onInsert(this,0,this);
 		nestedBatchEdit = 0;
+		transformer.addE(lines);
 	}
 	
 	public void addWatcher(TextWatcherR r){

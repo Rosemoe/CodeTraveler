@@ -9,12 +9,14 @@ public class WatcherTransformer implements TextWatcher{
 	
 	private Editable target;
 	private List<TextWatcherR> listeners;
+	private List<ActionEndListener> ll;
 	private int i,j;
 	
 	public WatcherTransformer(Editable text){
 		target = text;
 		target.setSpan(this,0,target.length(),Spannable.SPAN_INCLUSIVE_INCLUSIVE);
 		listeners = new ArrayList<TextWatcherR>();
+		ll = new ArrayList<ActionEndListener>();
 	}
 
 	public void add(TextWatcherR watcher){
@@ -26,6 +28,14 @@ public class WatcherTransformer implements TextWatcher{
 	
 	public void remove(TextWatcherR watcher){
 		listeners.remove(watcher);
+	}
+	
+	public void addE(ActionEndListener a){
+		ll.add(a);
+	}
+	
+	public void removeE(ActionEndListener a){
+		ll.remove(a);
 	}
 	
 	private void dispatchInsert(int i,CharSequence s){
@@ -55,7 +65,7 @@ public class WatcherTransformer implements TextWatcher{
 				dispatchReplace();
 			}
 		}else{
-			i=index;this.j=j;
+			i=index;
 		}
 		this.j=j;
 	}
@@ -68,7 +78,9 @@ public class WatcherTransformer implements TextWatcher{
 
 	@Override
 	public void afterTextChanged(Editable s) {
-		//no action
+		for(ActionEndListener a:ll){
+			a.onEnd();
+		}
 	}
 	
 }
