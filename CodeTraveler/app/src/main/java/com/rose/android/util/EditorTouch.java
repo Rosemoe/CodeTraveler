@@ -1,5 +1,7 @@
 package com.rose.android.util;
 
+//Created By Rose in 2019/7/20
+
 import android.view.GestureDetector;
 import android.view.GestureDetector.OnGestureListener;
 import android.view.MotionEvent;
@@ -11,8 +13,8 @@ import android.view.ScaleGestureDetector;
 import android.widget.OverScroller;
 import android.view.inputmethod.InputMethodManager;
 import android.util.Log;
+import android.content.ClipboardManager;
 
-//TODO
 public class EditorTouch implements OnGestureListener,OnContextClickListener,OnDoubleTapListener,OnScaleGestureListener
 {
 	private final static String LOG_TAG = "EditorTouchResolver";
@@ -24,7 +26,6 @@ public class EditorTouch implements OnGestureListener,OnContextClickListener,OnD
 	private boolean dragMode;
 	private boolean scaleEnabled;
 	
-	private float originalTextSize;
 	private int scrollMaxX;
 	private int scrollMaxY;
 	
@@ -125,9 +126,6 @@ public class EditorTouch implements OnGestureListener,OnContextClickListener,OnD
 
 	@Override
 	public boolean onScaleBegin(ScaleGestureDetector detector) {
-		if(scaleEnabled){
-			originalTextSize = editor.getStyles().getTextSize();
-		}
 		return scaleEnabled;
 	}
 
@@ -155,7 +153,8 @@ public class EditorTouch implements OnGestureListener,OnContextClickListener,OnD
 
 	@Override
 	public boolean onDoubleTap(MotionEvent event) {
-		//no action now
+		ClipboardManager cm = editor.getContext().getSystemService(ClipboardManager.class);
+		editor.getEditableText().append(cm.getText());
 		return false;
 	}
 

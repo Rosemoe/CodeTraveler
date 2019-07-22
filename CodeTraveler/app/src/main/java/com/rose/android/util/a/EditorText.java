@@ -69,11 +69,11 @@ public class EditorText extends SpannableStringBuilder{
 	}
 	
 	public int getLineStart(int line){
-		return 0;
+		return lines.getLineStart(line);
 	}
 	
 	public int getLineEnd(int line){
-		return this.length();
+		return lines.getLineEnd(line);
 	}
 	
 	public int getLineCount(){
@@ -81,7 +81,7 @@ public class EditorText extends SpannableStringBuilder{
 	}
 	
 	public int getLineByIndex(int charIndex){
-		return 0;
+		return lines.getLineByIndex(charIndex);
 	}
 	
 }

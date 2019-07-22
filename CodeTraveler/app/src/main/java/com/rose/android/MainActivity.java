@@ -11,6 +11,9 @@ public class MainActivity extends Activity
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+		
+		Debug.attachContext(this);
+		
 		CodeEditor e = new CodeEditor(this);
 		e.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
         setContentView(e);

@@ -57,6 +57,7 @@ public class WatcherTransformer implements TextWatcher{
 		}else{
 			i=index;this.j=j;
 		}
+		this.j=j;
 	}
 
 	@Override
