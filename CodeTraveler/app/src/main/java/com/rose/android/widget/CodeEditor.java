@@ -66,43 +66,71 @@ public class CodeEditor extends View implements TextWatcherR {
 	//height wrap mode
 	private boolean height_wrap;
 	
+	/*
+	 * Simple Constructor for Java code
+	 */
 	public CodeEditor(Context context){
 		this(context,null);
 	}
 	
+	/*
+	 * Constructor for Android Xml Parser
+	 * AttributeSet will be supported future
+	 */
 	public CodeEditor(Context context,AttributeSet attrs){
 		this(context,attrs,0);
 	}
 	
+	/*
+	 * Constructor for Android Xml Parser
+	 * AttributeSet will be supported future
+	 * style will be supported future
+	 */
 	public CodeEditor(Context context,AttributeSet attrs,int styleResId){
 		super(context,attrs,styleResId);
 		initView();
 	}
 	
-	//init the view
+	/*
+	 * initView():void
+	 * the basic init actions will be done here
+	 * it will be called only when the view's construcutor is called
+	 */
 	private void initView(){
 		mPaint = new Paint();
 		mPaint.setAntiAlias(true);
 		mPaint.setTypeface(Typeface.MONOSPACE);
 		mPaint.setTextSize(50.0f);
 		height_wrap = false;
+		//Style manager
 		mStyle = new EditorStyle();
 		mStyle.setTextSize(50.0f);
 		mStyle.setLineNumberGravity(Gravity.RIGHT);
 		mState = new EditorTouch(this);
+		//To detect gestures
 		mDetector_Basic = new GestureDetector(getContext(),mState);
 		mDetector_Scale = new ScaleGestureDetector(getContext(),mState);
 		mDetector_Basic.setOnDoubleTapListener(mState);
+		//To concat with input method
 		mIMM = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
 		this.setText("");
 		this.setEditable(true);
+		//To show input method
 		super.setFocusable(true);
 		super.setFocusableInTouchMode(true);
 	}
 	
 	//---------------------------------------
 	
-	//set a new text for the view
+	/*
+	 * setText(CharSequence):void
+	 * set a new text for the view to display
+	 * 
+	 * @param text the text you want to set.
+	 * The object will never change as 
+	 * we will make a copy for its chars to the EditorText
+	 * 
+	 */
 	public void setText(CharSequence text){
 		if(mText != null){
 			//disconnect with previous text
@@ -126,26 +154,55 @@ public class CodeEditor extends View implements TextWatcherR {
 		mIMM.restartInput(this);
 	}
 	
-	//get the text object
-	//Actually only return the type of EditorText
+	/*
+	 * getEditableText():EditorText
+	 * 
+	 * @return the EditorText we are using
+	 * by calling this method,you can get the
+	 * using text with toString() and the speed will increase
+	 * you can also make changes to the text displaying with it
+	 */
 	public EditorText getEditableText(){
 		return mText;
 	}
 	
-	//get normal text
-	//it will spend a long time if there is a big text
+	/*
+	 * getText():String
+	 * It will spend a long time if there is a big text
+	 *
+	 * @return Just as its method name...
+	 */
 	public String getText(){
 		return mText.toString();
 	}
 	
 	//---------------------------------------
 	
-	//get style manager to control the look
+	/*
+	 * getStyles():EditorStyle
+	 *
+	 * All of our appearance settings are saved in this object
+	 * you can make changes to it
+	 * so that you can easily make its style better
+	 */
 	public EditorStyle getStyles(){
 		return mStyle;
 	}
 	
-	//do not.call it yourself!
+	/*
+	 * notifySelChange()
+	 * 
+	 * This method is for internal calls
+	 * It sends the current slection positions to
+	 * the InputMethodManager due to notify the input method
+	 * that the selection positions have changed
+	 * The input method will make wrong actions with
+	 * InputConnection#setSelection(int,int) to set the selection
+	 * a unexpected position
+	 *
+	 * About more information plaease see
+	 * InputMethodManager#updateSelection()
+	 */
 	public void notifySelChange(){
 		if(conn == null||conn.isBatchEdit()||!hasFocus()){
 			return;
@@ -188,7 +245,6 @@ public class CodeEditor extends View implements TextWatcherR {
 
 	@Override
 	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-		
 		//we do not calculate our width beacause it might use plenty of time
 		if(MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.AT_MOST){
 			//fiil all the available area by default
@@ -217,7 +273,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		mState.setScrollMaxX(MeasureSpec.getSize(widthMeasureSpec)*3);
 		//scroll max y
 		mState.setScrollMaxY(getLineCount() * (int)mStyle.getLineHeight() - MeasureSpec.getSize(heightMeasureSpec)/2);
-		
+		//call super to apply the size config
 		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 	}
 	
@@ -228,10 +284,27 @@ public class CodeEditor extends View implements TextWatcherR {
 	private int selSt;
 	private float tabSize;
 	
+	/*
+	 * getLastOffset():float
+	 *
+	 * This method is for internal calls
+	 * It returns the last offset x cache when drawing
+	 * It is used to calculate the selection positions
+	 */
 	public float getLastOffset(){
 		return offsetX;
 	}
 	
+	/*
+	 * measureText()
+	 *
+	 * It is used to measure the text in EditorText
+	 * which is using by us from the position {st} to {ed}
+	 *
+	 * @param st The start of text
+	 * @param ed The end of text
+	 * @return text measure width
+	 */
 	public float measureText(int st,int ed){
 		float j = 0;
 		char b[] =new char[1];
@@ -250,21 +323,28 @@ public class CodeEditor extends View implements TextWatcherR {
 	@Override
 	protected void onDraw(Canvas canvas){
 		//call super to draw background.
+		//You can set background for our view
 		super.onDraw(canvas);
+		//make offset x
 		offsetX = -mState.getOffsetX();
-		
+		//draw the current line's background
 		drawCurrLineBackground(canvas);
-		
+		//draw line numbers and their background
+		//if need(plaease set it in EditorStyle)
 		if(mStyle.showLineNumber){
 			drawLineNumbers(canvas);
 			drawDividerLine(canvas);
 		}
-		
+		//draw the texts on current screen
 		drawText_debug(canvas);
 	}
 	
+	/*
+	 * Draw the text on current screen
+	 */
 	private void drawText_debug(Canvas canvas){
 		mPaint.setColor(mStyle.defaultTextColor);
+		//we only draw the text visible
 		int i = getFirstVisibleLine();
 		int m = getLastVisibleLine();
 		selSt = Selection.getSelectionStart(mText);
@@ -274,6 +354,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		}
 	}
 	
+	//Draw a text line
 	private void drawLine_debug(CharSequence s,int li,float x,float y,Canvas c){
 		int st = getLineStart(li);
 		int en = getLineEnd(li);
@@ -283,12 +364,15 @@ public class CodeEditor extends View implements TextWatcherR {
 			c.drawText(str,x,y,mPaint);
 			if(st<=start && en >= start && li == CurrLine){
 				float xf = measureText(st,start) + x;
+				//draw the cursor directly
 				drawCursorIfHereIs(start,start-1,xf,li,c);
 			}
 			return;
 		}
 		
 		//Deprecated
+		//It has a low effect
+		//And we are going to draw spans
 		char buffer[] = new char[1];
 		drawCursorIfHereIs(start,st - 1,x,li,c);
 		for(int i = st;i < en;i++){
@@ -306,6 +390,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		}
 	}
 	
+	//Draw insert cursor with a simple IF
 	private void drawCursorIfHereIs(int cursorPos,int index,float offsetX,int line,Canvas c){
 		if(cursorPos == index + 1){
 			int backup = mPaint.getColor();
@@ -316,14 +401,15 @@ public class CodeEditor extends View implements TextWatcherR {
 		}
 	}
 	
+	//Draw the background of the line you are working with
 	private void drawCurrLineBackground(Canvas canvas){
 		int charOffset = Selection.getSelectionStart(mText);
+		//fix the bug
 		try{
 			if(mText.charAt(charOffset)=='\n' && charOffset != 0){
 				charOffset--;
 			}
 		}catch(Exception e){
-			
 		}
 		int line = getLineByIndex(charOffset);
 		CurrLine = line;
@@ -333,6 +419,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		canvas.drawRect(0,top,getWidth(),bot,mPaint);
 	}
 	
+	//Draw line numbers as well as its background
 	private void drawLineNumbers(Canvas canvas){
 		int i = getFirstVisibleLine();
 		int m = getLastVisibleLine();
@@ -365,6 +452,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		mPaint.setTextAlign(Paint.Align.LEFT);
 	}
 	
+	//Draw the divider line
 	private void drawDividerLine(Canvas canvas){
 		mPaint.setColor(mStyle.dividerLineColor);
 		//5 is the width of divider
@@ -373,6 +461,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		offsetX += 10;
 	}
 	
+	//Draw the line number background
 	private void drawLineNumberBackground(Canvas canvas,float from,float to){
 		mPaint.setColor(mStyle.LNBG);
 		canvas.drawRect(from,0,to,getHeight(),mPaint);
@@ -380,7 +469,7 @@ public class CodeEditor extends View implements TextWatcherR {
 
 	@Override
 	public void computeScroll() {
-		//Override due to scroll effects
+		//Override due to scrolling effects
 		if(mState.getScroller().computeScrollOffset()){
 			invalidate();
 		}
@@ -389,32 +478,83 @@ public class CodeEditor extends View implements TextWatcherR {
 	
 	//---------------------------------------
 	
+	/*
+	 * calculateScrollMaxY()
+	 *
+	 * Internal call
+	 * This method send the new scroll max y position to EditorTouch
+	 */
 	private void calculateScrollMaxY(){
 		mState.setScrollMaxY(getLineCount() * ((int)mStyle.getLineHeight()) - getHeight()/2);
 	}
 	
+	/*
+	 * getFirstVisibleLine():int
+	 *
+	 * Get the first line on the screen
+	 * @return first line index
+	 */
 	public int getFirstVisibleLine(){
 		int i = mState.getOffsetY()/((int)mStyle.getLineHeight());
 		return (i>=0)?i:0;
 	}
 	
+	/*
+	 * getLastVisibleLine():int
+	 *
+	 * Get the last visible line on the screen
+	 * @return last line index
+	 */
 	public int getLastVisibleLine(){
 		int l = (int)Math.ceil((mState.getOffsetY()+getHeight())/mStyle.getLineHeight());
 		return (l<getLineCount()?l:getLineCount() -1);
 	}
 	
+	/*
+	 * getLineBaseLineOnScreen(int):long
+	 *
+	 * To decrease the float operations
+	 * The float is not exact when we testing
+	 * and the text will display on wrong position
+	 * on the screen when there are about 3 million lines
+	 *
+	 * @return The base line y for line on canvas
+	 */
 	public long getLineBaseLineOnScreen(int line){
 		return (long)getLineBaseline(line - getFirstVisibleLine())-getOffsetOnScreen();
 	}
 	
+	/*
+	 * getLineTopOnScreen(int):long
+	 *
+	 * The same usage as above method
+	 *
+	 * @return The top line position on canvas
+	 */
 	public long getLineTopOnScreen(int line){
 		return (long)mStyle.getLineTop(line - getFirstVisibleLine()) - getOffsetOnScreen();
 	}
 	
+	/*
+	 * getLineBottomOnScreen(int):long
+	 * 
+	 * The same usage as above method
+	 *
+	 * @return The bottom line on canvas
+	 */
 	public long getLineBottomOnScreen(int line){
 		return (long)mStyle.getLineBottom(line - getFirstVisibleLine()) - getOffsetOnScreen();
 	}
 	
+	/*
+	 * getOffsetOnScreen():long
+	 *
+	 * This is a simple helper of getBaseLineOnScreen() and other method
+	 * which ends with "OnScreen"
+	 * It return the top position of the first line on canvas
+	 *
+	 * @return The first line offset
+	 */
 	long getOffsetOnScreen(){
 		long offY = mState.getOffsetY();
 		long fl = getFirstVisibleLine();
@@ -422,20 +562,48 @@ public class CodeEditor extends View implements TextWatcherR {
 		return newOff;
 	}
 	
+	/*
+	 * getLineBaseline(int):float
+	 *
+	 * It is not exact when the line is big
+	 *
+	 * @return the base line y related to the zero
+	 */
 	public float getLineBaseline(int line){
 		float top = mStyle.top;
 		float bottom = mStyle.bottom;
 		return mStyle.getLineHeight() * (line + 0.5f) + (top-bottom)/2;
 	}
 	
+	/*
+	 * getLineCount():int
+	 *
+	 * Get how many lines there are
+	 * @see LineManager
+	 */
 	public int getLineCount(){
 		return mText.getLineCount();
 	}
 
+	/*
+	 * getLineStart(int):int
+	 * 
+	 * With the given line index,we try to
+	 * find the start char offset through LineManager
+	 * It will spend a long time when you
+	 * are trying to get a line that far from 
+	 * the lines you have already requested.
+	 * The lines you requested long time ago which
+	 * are not used in a long time will also spend
+	 * a long time.
+	 *
+	 * @return The first character index of line
+	 */
 	public int getLineStart(int line){
-		//due to not get the wrong start
-		//beacause LineManager ususlly return
-		//the '\n' as the line start
+		//try to not get the wrong start
+		//beacause LineManager always return
+		//the '\n' as the line start for
+		//the lines which are not the first line
 		//we would like to prevent it
 		int i = mText.getLineStart(line);
 		if(line != 0){
@@ -444,10 +612,19 @@ public class CodeEditor extends View implements TextWatcherR {
 		return i;
 	}
 
+	/*
+	 * getLineEnd(int):int
+	 * 
+	 * The same as getLineStart() except that this returns the end index
+	 * @return The end index of line
+	 */
 	public int getLineEnd(int line){
 		return mText.getLineEnd(line);
 	}
 
+	/*
+	 * Get the line index by char offset
+	 */
 	public int getLineByIndex(int charIndex){
 		return mText.getLineByIndex(charIndex);
 	}
@@ -455,7 +632,7 @@ public class CodeEditor extends View implements TextWatcherR {
 	//---------------------------------------
 	
 	//this flag is used to tell us whether the delete action is a part of replace
-	//so we will not redraw twice when the text changing
+	//so we will not redraw twice when the text is being replaced
 	private boolean flagReplace = false;
 	
 	@Override
@@ -489,28 +666,41 @@ public class CodeEditor extends View implements TextWatcherR {
 	
 	//---------------------------------------
 
+	/*
+	 * isEditable():boolean
+	 * @see setEditable(boolean)
+	 * @return whether the editor is editable
+	 */
 	public boolean isEditable(){
 		return mEditable;
 	}
 	
+	/*
+	 * setEditable(boolean)
+	 * Set whether the editor is editable
+	 * If not,the selection and input method will not
+	 * show and the text can not be selected
+	 */
 	public void setEditable(boolean editable){
 		mEditable = editable;
 	}
 
 	@Override
 	public boolean onCheckIsTextEditor() {
-		return isEditable();
+		//Override
+		return isEditable() && isEnabled();
 	}
 
 	@Override
 	public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
 		outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT;
+		//put necessary information for input method
 		outAttrs.initialSelStart = Selection.getSelectionStart(mText);
 		outAttrs.initialSelEnd = Selection.getSelectionEnd(mText);
 		//when we create a connection
 		//we reset the batch edit state
 		mText.resetBatchEdit();
-		return (isEditable()) ? (conn = new EditorInputConnection(this)) : null;
+		return onCheckIsTextEditor() ? (conn = new EditorInputConnection(this)) : null;
 	}
 	
 	//---------------------------------------
@@ -533,6 +723,9 @@ public class CodeEditor extends View implements TextWatcherR {
 			distance = 0;
 		}
 		
+		/*
+		 * Set a typeface for editor
+		 */
 		public void setTypeface(Typeface typeface){
 			if(typeface == null){
 				typeface = Typeface.MONOSPACE;
@@ -542,10 +735,18 @@ public class CodeEditor extends View implements TextWatcherR {
 			invalidate();
 		}
 		
+		//Getter
 		public Typeface getTypeface(){
 			return mPaint.getTypeface();
 		}
 		
+		/*
+		 * Set a new text size for editor
+		 * Your scrolling position will not be changed!
+		 * It means that the displsy that user can see
+		 * will change a lot if the value 
+		 * is far from the size before
+		 */
 		public void setTextSize(float size){
 			mPaint.setTextSize(size);
 			Paint.FontMetrics fm = mPaint.getFontMetrics();
@@ -558,48 +759,84 @@ public class CodeEditor extends View implements TextWatcherR {
 			invalidate();
 		}
 		
+		//Getter
 		public float getTextSize(){
 			return mPaint.getTextSize();
 		}
 		
+		/*
+		 * Set text scale x
+		 */
 		public void setTextScaleX(float scaleX){
 			mPaint.setTextScaleX(scaleX);
 			invalidate();
 		}
 		
+		//Getter
 		public float getTextScaleX(){
 			return mPaint.getTextScaleX();
 		}
 		
+		/*
+		 * Set text skew x
+		 */
 		public float getTextSkewX(){
 			return mPaint.getTextSkewX();
 		}
 		
+		//Getter
 		public void setTextSkewX(float skewX){
 			mPaint.setTextSkewX(skewX);
 			invalidate();
 		}
 		
+		/*
+		 * Get line height of each line including line distance
+		 * It is a simple sum of real height and distance
+		 * If you want to get the real height of current text size
+		 * please call getLineRealHeight()
+		 */
 		public float getLineHeight(){
 			return (getLineRealHeight() + getLineDistancePixel());
 		}
 		
+		/*
+		 * Get line top line absolutely
+		 * It will be not exactly if the number is large
+		 * (Important!)
+		 */
 		public float getLineTop(int line){
 			return getLineHeight() * line;
 		}
 		
+		/*
+		 * Get line bottom absolutely
+		 * It will be not exactly if the number is large
+		 * (Important!)
+		 */
 		public float getLineBottom(int line){
 			return getLineTop(line) + getLineHeight();
 		}
 		
+		/*
+		 * Get the real line height
+		 * It only depends on the text size
+		 * and the typeface you set
+		 */
 		public float getLineRealHeight(){
 			return (float)Math.ceil(descent) + (float)Math.ceil(ascent);
 		}
 		
+		/*
+		 * Get the line distance in pixel
+		 */
 		public float getLineDistancePixel(){
 			return (distsncePixelOrDouble ? distance : getLineRealHeight() * distance);
 		}
 		
+		/*
+		 * Set the line distance with a determinated value
+		 */
 		public void setLineDistancePixel(float pixel){
 			if(pixel < 0){
 				throw new IllegalArgumentException("under zero is not allowed");
@@ -610,6 +847,12 @@ public class CodeEditor extends View implements TextWatcherR {
 			invalidate();
 		}
 		
+		/*
+		 * Set a line distance which 
+		 * depends on the text size
+		 * it is d*getRealLineHeight()
+		 * And it will change if text size changes
+		 */
 		public void setLineDistanceDouble(float d){
 			if(d >= 0 && d <= 1){
 				distsncePixelOrDouble = false;
@@ -621,55 +864,101 @@ public class CodeEditor extends View implements TextWatcherR {
 			invalidate();
 		}
 		
+		/*
+		 * Set whether editor should show line number and divider
+		 */
 		public void setShowLineNumber(boolean s){
+			//decrease useless calls
+			if(s == showLineNumber){
+				return;
+			}
 			showLineNumber = s;
 			invalidate();
 		}
 		
+		/*
+		 * Set the default text color
+		 * as there is no highlighter or the highlighter
+		 * did not set a span for some regions
+		 */
 		public void setDefaultTextColor(int color){
 			this.defaultTextColor = color;
 			invalidate();
 		}
 		
+		//Getter
 		public int getDefaultTextColor(){
 			return this.defaultTextColor;
 		}
 		
+		/*
+		 * Set line number text color
+		 */
 		public void setLineNumberColor(int c){
 			lineNumberColor=c;
 			invalidate();
 		}
 		
+		//Getter
 		public int getLineNumberColor(){
 			return lineNumberColor;
 		}
 		
+		/*
+		 * Set the color of divider line
+		 * between the line number rectange and
+		 * text editing rectange
+		 */
 		public void setDividerColor(int c){
 			dividerLineColor=c;
 			invalidate();
 		}
 		
+		//Getter
 		public int getDividerColor(){
 			return dividerLineColor;
 		}
 		
+		/*
+		 * Set the background color of line number rectange
+		 */
 		public void setLineNumberBackground(int c){
 			LNBG =c;
 			invalidate();
 		}
 		
-		public int getLineNumberBackground(int c){
+		//Getter
+		public int getLineNumberBackground(){
 			return LNBG;
 		}
 		
+		/*
+		 * Set the background color of the line you are working
+		 * with.
+		 */
 		public void setCurrentLineColor(int c){
 			lineColor = c;
 		}
 		
+		//Getter
 		public int getCurrentLineColor(){
 			return lineColor;
 		}
 		
+		/*
+		 * Set the line number gravity
+		 *
+		 * Note that we only support:
+		 * Gravity.CENTER
+		 * Gravity.LEFT
+		 * Gravity.RIGHT
+		 * And any mask is not supported.
+		 * The Gravity.CENTER_HORIZONTAL will be
+		 * replaced with Gravity.CENTER automatically
+		 * by calling this method.
+		 * It is better to use Gravity.CENTER if you use
+		 * Gravity.CENTER_HORIZONTAL
+		 */
 		public void setLineNumberGravity(int gravity){
 			switch(gravity){
 				case Gravity.CENTER:
@@ -687,10 +976,13 @@ public class CodeEditor extends View implements TextWatcherR {
 					Log.w("CodeEditor","CENTER_HORIZONTAL is not a valid flag for CodeEditor,please use CENTER");
 					break;
 				default:
-					throw new IllegalArgumentException("Gravity not supported");
+					throw new IllegalArgumentException("Given gravity mask not supported");
 			}
 		}
 		
+		//Getter
+		//Note that you will never get other values
+		//except CENTER,LEFT,RIGHT in Gravity
 		public int getLineNumberFravity(){
 			return lnGravity;
 		}
