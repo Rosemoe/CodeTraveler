@@ -69,6 +69,10 @@ public class EditorText extends SpannableStringBuilder{
 		stack.undo(this);
 	}
 	
+	public UndoManger getUndoManager(){
+		return stack;
+	}
+	
 	public int getLineStart(int line){
 		return lines.getLineStart(line);
 	}

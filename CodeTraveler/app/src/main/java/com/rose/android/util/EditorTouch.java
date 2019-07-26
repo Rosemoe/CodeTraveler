@@ -14,8 +14,11 @@ import android.widget.OverScroller;
 import android.view.inputmethod.InputMethodManager;
 import android.util.Log;
 import android.content.ClipboardManager;
+import android.content.Context;
+import android.text.Selection;
+import com.rose.android.Debug;
 
-public class EditorTouch implements OnGestureListener,OnContextClickListener,OnDoubleTapListener,OnScaleGestureListener
+public class EditorTouch implements OnGestureListener,OnDoubleTapListener,OnScaleGestureListener
 {
 	private final static String LOG_TAG = "EditorTouchResolver";
 	
@@ -78,7 +81,7 @@ public class EditorTouch implements OnGestureListener,OnContextClickListener,OnD
 		}
 		boolean r = editor.hasFocus();
 		if(r){
-			r = r && editor.getContext().getSystemService(InputMethodManager.class).showSoftInput(editor,0);
+			r = r && ((InputMethodManager)editor.getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(editor,0);
 		}
 		return r;
 	}
@@ -113,11 +116,11 @@ public class EditorTouch implements OnGestureListener,OnContextClickListener,OnD
 	public boolean onScale(ScaleGestureDetector detector) {
 		float newSize = detector.getScaleFactor() * editor.getStyles().getTextSize();
 		if(newSize > 100){
-			editor.getStyles().setTextSize(newSize);
+			editor.getStyles().setTextSize(100);
 			return false;
 		}
 		if(newSize < 20){
-			editor.getStyles().setTextSize(newSize);
+			editor.getStyles().setTextSize(20);
 			return false;
 		}
 		editor.getStyles().setTextSize(newSize);
@@ -135,12 +138,6 @@ public class EditorTouch implements OnGestureListener,OnContextClickListener,OnD
 	}
 
 	@Override
-	public boolean onContextClick(MotionEvent event) {
-		//not supported now
-		return false;
-	}
-
-	@Override
 	public boolean onSingleTapConfirmed(MotionEvent event) {
 		if(editor.isEditable() && editor.isEnabled()){
 			boolean result = showSoftInputForEditor();
@@ -148,13 +145,36 @@ public class EditorTouch implements OnGestureListener,OnContextClickListener,OnD
 				Log.w(LOG_TAG,"Unable to show soft input for editor:" + editor.toString());
 			}
 		}
+		float x = event.getX() + getOffsetX() - (editor.getLastOffset()+getOffsetX());
+		float y = event.getY() + getOffsetY();
+		int line = (int)(y/editor.getStyles().getLineHeight());
+		if(line < 0){
+			line = 0;
+		}else if(line >= editor.getLineCount()){
+			line = editor.getLineCount() - 1;
+		}
+		int st = editor.getLineStart(line);
+		int ed = editor.getLineEnd(line);
+		int j = st;
+		float drawX = 0;
+		while(drawX < x && j < ed){
+			drawX = editor.measureText(st,j);
+			j++;
+		}
+		if(st != ed && st < j && drawX > x){
+			j--;
+		}
+		Selection.setSelection(editor.getEditableText(),j);
+		editor.notifySelChange();
+		editor.invalidate();
 		return true;
 	}
 
 	@Override
 	public boolean onDoubleTap(MotionEvent event) {
-		ClipboardManager cm = editor.getContext().getSystemService(ClipboardManager.class);
+		ClipboardManager cm = (ClipboardManager)editor.getContext().getSystemService(Context.CLIPBOARD_SERVICE);
 		editor.getEditableText().append(cm.getText());
+		scroller.startScroll(scroller.getCurrX(),scroller.getCurrY(),0,scrollMaxY-getOffsetY(),0);
 		return false;
 	}
 

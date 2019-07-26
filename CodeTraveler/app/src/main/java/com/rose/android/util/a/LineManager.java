@@ -24,7 +24,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		zeroPoint = new Pair();
 		updateEndPoint();
 		max_capcity = 50;
-		add_switch = 10;
+		add_switch = 1;
 	}
 	
 	private void updateEndPoint(){
@@ -76,7 +76,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		for(int i = 0; i < count;i++,line++){
 			index =indexOf(serveTarget,(line==0?0:index+1),'\n');
 			if(index == -1){
-				throw new IndexOutOfBoundsException("too large count");
+				return index;
 			}
 		}
 		return index;
@@ -239,15 +239,9 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 			}else{
 				pair.first += dL;
 				pair.second += textToInsert.length();
-				if(pair.first-dL == 10){
-					a++;
-					Debug.debug(pair.second-textToInsert.length()+" a="+a+"b="+b);
-				}
 			}
 		}
 	}
-	
-	private int a=0,b=0;
 
 	@Override
 	public void onDelete(Editable doc, int index, CharSequence textDeleted) {
@@ -260,10 +254,6 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 			}else if(index+textDeleted.length() < pair.second){
 				pair.first -= dL;
 				pair.second -= textDeleted.length();
-				if(pair.first == 10){
-					b++;
-					Debug.debug(pair.second+" a="+a+" b="+b);
-				}
 			}else{
 				int xDl = getNewLineTokenCount(doc.subSequence(index,pair.second+1));
 				pair.first -= xDl;

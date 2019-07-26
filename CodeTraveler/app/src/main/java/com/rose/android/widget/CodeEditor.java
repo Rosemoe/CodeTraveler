@@ -26,6 +26,14 @@ import com.rose.android.util.a.EditorText;
 import com.rose.android.util.a.TextWatcherR;
 import android.widget.Toast;
 import com.rose.android.Debug;
+import android.view.inputmethod.InputMethodManager;
+import android.os.Handler;
+import android.os.Message;
+import android.os.Looper;
+import com.rose.android.util.a.EditorInputConnection;
+import android.widget.TextView;
+import android.view.Gravity;
+import android.util.Log;
 
 public class CodeEditor extends View implements TextWatcherR {
 	
@@ -51,6 +59,10 @@ public class CodeEditor extends View implements TextWatcherR {
 	//detect the actions of scale text size
 	private ScaleGestureDetector mDetector_Scale;
 	
+	//input method service
+	private InputMethodManager mIMM;
+	private EditorInputConnection conn;
+	
 	//height wrap mode
 	private boolean height_wrap;
 	
@@ -67,26 +79,21 @@ public class CodeEditor extends View implements TextWatcherR {
 		initView();
 	}
 	
-	//Constructor for Lollipop +
-	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
-	public CodeEditor(Context context,AttributeSet attrs,int styleResId,int defStyle){
-		super(context,attrs,styleResId,defStyle);
-		initView();
-	}
-	
 	//init the view
 	private void initView(){
-		mPaint = new TextPaint();
+		mPaint = new Paint();
 		mPaint.setAntiAlias(true);
 		mPaint.setTypeface(Typeface.MONOSPACE);
 		mPaint.setTextSize(50.0f);
 		height_wrap = false;
 		mStyle = new EditorStyle();
+		mStyle.setTextSize(50.0f);
+		mStyle.setLineNumberGravity(Gravity.RIGHT);
 		mState = new EditorTouch(this);
 		mDetector_Basic = new GestureDetector(getContext(),mState);
 		mDetector_Scale = new ScaleGestureDetector(getContext(),mState);
-		mDetector_Basic.setContextClickListener(mState);
 		mDetector_Basic.setOnDoubleTapListener(mState);
+		mIMM = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
 		this.setText("");
 		this.setEditable(true);
 		super.setFocusable(true);
@@ -115,11 +122,13 @@ public class CodeEditor extends View implements TextWatcherR {
 		requestLayout();
 		//refresh display
 		invalidate();
+		//tell the input method
+		mIMM.restartInput(this);
 	}
 	
 	//get the text object
 	//Actually only return the type of EditorText
-	public Editable getEditableText(){
+	public EditorText getEditableText(){
 		return mText;
 	}
 	
@@ -134,6 +143,17 @@ public class CodeEditor extends View implements TextWatcherR {
 	//get style manager to control the look
 	public EditorStyle getStyles(){
 		return mStyle;
+	}
+	
+	//do not.call it yourself!
+	public void notifySelChange(){
+		if(conn == null||conn.isBatchEdit()||!hasFocus()){
+			return;
+		}
+		int st = Selection.getSelectionStart(mText);
+		int ed = Selection.getSelectionEnd(mText);
+		mIMM.updateSelection(this,st,ed,conn.getComposingSpanStart(mText),conn.getComposingSpanEnd(mText));
+		//Debug.debug("Sel upd");
 	}
 	
 	//---------------------------------------
@@ -164,15 +184,6 @@ public class CodeEditor extends View implements TextWatcherR {
 			//unknown action
 			return false;
 		}
-	}
-
-	@Override
-	public boolean onGenericMotionEvent(MotionEvent event) {
-		//disabled,cancel event
-		if(isEnabled()){
-			return false;
-		}
-		return mDetector_Basic.onGenericMotionEvent(event);
 	}
 
 	@Override
@@ -214,6 +225,27 @@ public class CodeEditor extends View implements TextWatcherR {
 	
 	private float offsetX;
 	private int CurrLine;
+	private int selSt;
+	private float tabSize;
+	
+	public float getLastOffset(){
+		return offsetX;
+	}
+	
+	public float measureText(int st,int ed){
+		float j = 0;
+		char b[] =new char[1];
+		while(st < ed){
+			if(mText.charAt(st)=='\t'){
+				j += 4 * mPaint.measureText(" ");
+			}else{
+				b[0]=mText.charAt(st);
+				j += mPaint.measureText(b,0,1);
+			}
+			st++;
+		}
+		return j;
+	}
 	
 	@Override
 	protected void onDraw(Canvas canvas){
@@ -233,66 +265,104 @@ public class CodeEditor extends View implements TextWatcherR {
 	
 	private void drawText_debug(Canvas canvas){
 		mPaint.setColor(mStyle.defaultTextColor);
-		int i = getFirstVisableLine();
-		int m = getLastVisableLine();
+		int i = getFirstVisibleLine();
+		int m = getLastVisibleLine();
+		selSt = Selection.getSelectionStart(mText);
+		tabSize = 4 * mPaint.measureText(" ");
 		for(;i<=m;i++){
-			drawLine_debug(mText,i,offsetX,getLineBaseline(i)-mState.getOffsetY(),canvas);
+			drawLine_debug(mText,i,offsetX,getLineBaseLineOnScreen(i),canvas);
 		}
 	}
 	
 	private void drawLine_debug(CharSequence s,int li,float x,float y,Canvas c){
 		int st = getLineStart(li);
 		int en = getLineEnd(li);
-		int start = Selection.getSelectionStart(mText);
-		drawCursorIfHereIs(start,st,x,li,c);
+		int start = selSt;
+		if(true){
+			String str = mText.subSequence(st,en).toString().replace("\t","    ");
+			c.drawText(str,x,y,mPaint);
+			if(st<=start && en >= start && li == CurrLine){
+				float xf = measureText(st,start) + x;
+				drawCursorIfHereIs(start,start-1,xf,li,c);
+			}
+			return;
+		}
+		
+		//Deprecated
+		char buffer[] = new char[1];
+		drawCursorIfHereIs(start,st - 1,x,li,c);
 		for(int i = st;i < en;i++){
 			if(s.charAt(i)=='\t'){
-				x += mPaint.measureText("    ");
+				x = x + tabSize;
 			}else{
 				c.drawText(s,i,i+1,x,y,mPaint);
-				x += mPaint.measureText(s,i,i+1);
+				buffer[0] = s.charAt(i);
+				x = x + mPaint.measureText(buffer,0,1);
 			}
 			drawCursorIfHereIs(start,i,x,li,c);
-		}
-		try{
-			if(s.length() == en)
-				drawCursorIfHereIs(start,en,x,li,c);
-		}catch(IndexOutOfBoundsException e){
+			if(x > getWidth()){
+				break;
+			}
 		}
 	}
 	
 	private void drawCursorIfHereIs(int cursorPos,int index,float offsetX,int line,Canvas c){
-		if(cursorPos == index && CurrLine == line){
+		if(cursorPos == index + 1){
 			int backup = mPaint.getColor();
 			mPaint.setColor(Color.BLACK);
 			mPaint.setStrokeWidth(2);
-			c.drawLine(offsetX,mStyle.getLineTop(line)-mState.getOffsetY(),offsetX,mStyle.getLineBottom(line)-mState.getOffsetY(),mPaint);
+			c.drawLine(offsetX,getLineTopOnScreen(line),offsetX,getLineBottomOnScreen(line),mPaint);
 			mPaint.setColor(backup);
-			//Debug.debug("DrawCursor"+line);
 		}
 	}
 	
 	private void drawCurrLineBackground(Canvas canvas){
 		int charOffset = Selection.getSelectionStart(mText);
+		try{
+			if(mText.charAt(charOffset)=='\n' && charOffset != 0){
+				charOffset--;
+			}
+		}catch(Exception e){
+			
+		}
 		int line = getLineByIndex(charOffset);
 		CurrLine = line;
 		mPaint.setColor(mStyle.lineColor);
-		float top = getLineBaseline(line) + mPaint.ascent() - mState.getOffsetY();
+		float top = getLineTopOnScreen(line);
 		float bot = top + mStyle.getLineHeight();
 		canvas.drawRect(0,top,getWidth(),bot,mPaint);
 	}
 	
 	private void drawLineNumbers(Canvas canvas){
+		int i = getFirstVisibleLine();
+		int m = getLastVisibleLine();
+		float x = 0;
+		float width = mPaint.measureText(Integer.toString(getLineCount() + 1));
+		drawLineNumberBackground(canvas,offsetX,offsetX+width+10);
 		mPaint.setColor(mStyle.lineNumberColor);
-		int i = getFirstVisableLine();
-		int m = getLastVisableLine();
-		offsetX += 5;
+		int gv = mStyle.lnGravity;
+		switch(gv){
+			case Gravity.LEFT:
+				x = offsetX;
+				mPaint.setTextAlign(Paint.Align.LEFT);
+				break;
+			case Gravity.RIGHT:
+				x = offsetX + width;
+				mPaint.setTextAlign(Paint.Align.RIGHT);
+				break;
+			case Gravity.CENTER:
+				mPaint.setTextAlign(Paint.Align.CENTER);
+				x = offsetX + width/2;
+				break;
+		}
+		x += 5;
 		for(;i <= m;i++){
-			canvas.drawText(Integer.toString(i+1), offsetX, getLineBaseline(i) - mState.getOffsetY(),mPaint);
+			canvas.drawText(Integer.toString(i+1), x, getLineBaseLineOnScreen(i),mPaint);
 		}
 		//tip:5 is the right margin of line number
-		//and the left margib of line number
-		offsetX += mPaint.measureText(Integer.toString(getLineCount() + 1)) + 5;
+		//and the left margin of line number
+		offsetX += width + 10;
+		mPaint.setTextAlign(Paint.Align.LEFT);
 	}
 	
 	private void drawDividerLine(Canvas canvas){
@@ -301,6 +371,11 @@ public class CodeEditor extends View implements TextWatcherR {
 		canvas.drawRect(offsetX,0,offsetX+5,getHeight(),mPaint);
 		//extra 5 is the right margin
 		offsetX += 10;
+	}
+	
+	private void drawLineNumberBackground(Canvas canvas,float from,float to){
+		mPaint.setColor(mStyle.LNBG);
+		canvas.drawRect(from,0,to,getHeight(),mPaint);
 	}
 
 	@Override
@@ -315,21 +390,42 @@ public class CodeEditor extends View implements TextWatcherR {
 	//---------------------------------------
 	
 	private void calculateScrollMaxY(){
-		mState.setScrollMaxY(getLineCount() * (int) (mStyle.getLineHeight()) - getHeight()/2);
+		mState.setScrollMaxY(getLineCount() * ((int)mStyle.getLineHeight()) - getHeight()/2);
 	}
 	
-	public int getFirstVisableLine(){
-		int i = mState.getOffsetY()/(int)(mStyle.getLineHeight());
+	public int getFirstVisibleLine(){
+		int i = mState.getOffsetY()/((int)mStyle.getLineHeight());
 		return (i>=0)?i:0;
 	}
 	
-	public int getLastVisableLine(){
+	public int getLastVisibleLine(){
 		int l = (int)Math.ceil((mState.getOffsetY()+getHeight())/mStyle.getLineHeight());
 		return (l<getLineCount()?l:getLineCount() -1);
 	}
 	
+	public long getLineBaseLineOnScreen(int line){
+		return (long)getLineBaseline(line - getFirstVisibleLine())-getOffsetOnScreen();
+	}
+	
+	public long getLineTopOnScreen(int line){
+		return (long)mStyle.getLineTop(line - getFirstVisibleLine()) - getOffsetOnScreen();
+	}
+	
+	public long getLineBottomOnScreen(int line){
+		return (long)mStyle.getLineBottom(line - getFirstVisibleLine()) - getOffsetOnScreen();
+	}
+	
+	long getOffsetOnScreen(){
+		long offY = mState.getOffsetY();
+		long fl = getFirstVisibleLine();
+		long newOff = offY - (long)mStyle.getLineHeight()*fl;
+		return newOff;
+	}
+	
 	public float getLineBaseline(int line){
-		return mStyle.getLineHeight() * ( line + 1) - mPaint.getFontMetrics().descent;
+		float top = mStyle.top;
+		float bottom = mStyle.bottom;
+		return mStyle.getLineHeight() * (line + 0.5f) + (top-bottom)/2;
 	}
 	
 	public int getLineCount(){
@@ -342,12 +438,8 @@ public class CodeEditor extends View implements TextWatcherR {
 		//the '\n' as the line start
 		//we would like to prevent it
 		int i = mText.getLineStart(line);
-		try{
-			if(mText.charAt(i)=='\n'){
-				i++;
-			}
-		}catch(IndexOutOfBoundsException e){
-			//do nothing
+		if(line != 0){
+			i++;
 		}
 		return i;
 	}
@@ -377,6 +469,7 @@ public class CodeEditor extends View implements TextWatcherR {
 			requestLayout();
 		}
 		calculateScrollMaxY();
+		notifySelChange();
 		invalidate();
 	}
 
@@ -386,6 +479,7 @@ public class CodeEditor extends View implements TextWatcherR {
 			flagReplace = false;
 			return;
 		}
+		notifySelChange();
 		calculateScrollMaxY();
 		if(height_wrap){
 			requestLayout();
@@ -416,49 +510,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		//when we create a connection
 		//we reset the batch edit state
 		mText.resetBatchEdit();
-		return (isEditable()) ? new EditorInputConnection() : null;
-	}
-	
-	//---------------------------------------
-	
-	public class EditorInputConnection extends BaseInputConnection{
-		
-		public EditorInputConnection(){
-			super(CodeEditor.this,true);
-		}
-		
-		@Override
-		public Editable getEditable() {
-			return isEditable() ? getEditableText() : null;
-		}
-
-		@Override
-		public boolean sendKeyEvent(KeyEvent event) {
-			if(event.getAction() == event.ACTION_DOWN){
-				switch(event.getKeyCode()){
-					case KeyEvent.KEYCODE_DEL:
-						deleteSurroundingText(1,0);
-						return true;
-					case KeyEvent.KEYCODE_ENTER:
-						commitText("\n",1);
-						return true;
-				}
-			}
-			return super.sendKeyEvent(event);
-		}
-
-		@Override
-		public boolean beginBatchEdit() {
-			mText.beginBatchEdit();
-			return super.beginBatchEdit();
-		}
-
-		@Override
-		public boolean endBatchEdit() {
-			mText.endBatchEdit();
-			return super.endBatchEdit();
-		}
-		
+		return (isEditable()) ? (conn = new EditorInputConnection(this)) : null;
 	}
 	
 	//---------------------------------------
@@ -469,9 +521,12 @@ public class CodeEditor extends View implements TextWatcherR {
 		private int lineColor = 0x66ec407a;
 		private int lineNumberColor = 0xff3f51b5;
 		private int dividerLineColor = 0xff3f51b5;
+		private int LNBG = 0xeeeeeeee;
 		private boolean showLineNumber = true;
 		private boolean distsncePixelOrDouble;
 		private float distance;
+		private float top,bottom,ascent,descent;
+		private int lnGravity;
 		
 		private EditorStyle(){
 			distsncePixelOrDouble = true;
@@ -493,7 +548,13 @@ public class CodeEditor extends View implements TextWatcherR {
 		
 		public void setTextSize(float size){
 			mPaint.setTextSize(size);
-			calculateScrollMaxY();
+			Paint.FontMetrics fm = mPaint.getFontMetrics();
+			top = Math.abs(fm.top);
+			bottom = Math.abs(fm.bottom);
+			ascent = Math.abs(fm.ascent);
+			descent = Math.abs(fm.descent);
+			if(mText != null)
+				calculateScrollMaxY();
 			invalidate();
 		}
 		
@@ -524,7 +585,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		}
 		
 		public float getLineTop(int line){
-			return getLineBaseline(line) + mPaint.ascent();
+			return getLineHeight() * line;
 		}
 		
 		public float getLineBottom(int line){
@@ -532,8 +593,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		}
 		
 		public float getLineRealHeight(){
-			Paint.FontMetricsInt ints = mPaint.getFontMetricsInt();
-			return  (ints.descent - ints.ascent);
+			return (float)Math.ceil(descent) + (float)Math.ceil(ascent);
 		}
 		
 		public float getLineDistancePixel(){
@@ -593,12 +653,46 @@ public class CodeEditor extends View implements TextWatcherR {
 			return dividerLineColor;
 		}
 		
+		public void setLineNumberBackground(int c){
+			LNBG =c;
+			invalidate();
+		}
+		
+		public int getLineNumberBackground(int c){
+			return LNBG;
+		}
+		
 		public void setCurrentLineColor(int c){
 			lineColor = c;
 		}
 		
 		public int getCurrentLineColor(){
 			return lineColor;
+		}
+		
+		public void setLineNumberGravity(int gravity){
+			switch(gravity){
+				case Gravity.CENTER:
+				case Gravity.LEFT:
+				case Gravity.RIGHT:
+					if(gravity == lnGravity){
+						//avoid useless invalidate() calls
+						return;
+					}
+					lnGravity = gravity;
+					invalidate();
+					break;
+				case Gravity.CENTER_HORIZONTAL:
+					setLineNumberGravity(Gravity.CENTER);
+					Log.w("CodeEditor","CENTER_HORIZONTAL is not a valid flag for CodeEditor,please use CENTER");
+					break;
+				default:
+					throw new IllegalArgumentException("Gravity not supported");
+			}
+		}
+		
+		public int getLineNumberFravity(){
+			return lnGravity;
 		}
 	}
 	

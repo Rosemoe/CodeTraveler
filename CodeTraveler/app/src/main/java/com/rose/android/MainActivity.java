@@ -6,6 +6,7 @@ import com.rose.android.widget.CodeEditor;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 import java.io.FileOutputStream;
+import java.io.File;
 public class MainActivity extends Activity 
 {
     @Override
@@ -14,10 +15,6 @@ public class MainActivity extends Activity
         super.onCreate(savedInstanceState);
 		
 		Debug.attachContext(this);
-		
-		CodeEditor e = new CodeEditor(this);
-		e.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
-        setContentView(e);
 		
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler(){
 
@@ -34,12 +31,15 @@ public class MainActivity extends Activity
 							}
 							
 							try{
-								FileOutputStream fos = new FileOutputStream("/sdcard/log.txt");
+								File nf = new File("/sdcard/log.txt");
+								if(!nf.exists())
+									nf.createNewFile();
+								FileOutputStream fos = new FileOutputStream(nf);
 								fos.write(sb.toString().getBytes());
 								fos.flush();
 								fos.close();
 							}catch(Exception e){
-								
+								//Debug.debug(e.toString());
 							}
 							
 							Debug.debug("Crash!");
@@ -50,5 +50,9 @@ public class MainActivity extends Activity
 
 			
 		});
+		
+		CodeEditor e = new CodeEditor(this);
+		e.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
+        setContentView(e);
     }
 }
