@@ -18,11 +18,15 @@ import android.content.Context;
 import android.text.Selection;
 import com.rose.android.Debug;
 
+//Helper class of CodeEditor
+//This class handles the touch events of the editor
 public class EditorTouch implements OnGestureListener,OnDoubleTapListener,OnScaleGestureListener
 {
 	private final static String LOG_TAG = "EditorTouchResolver";
 	
 	private CodeEditor editor;
+	
+	//This will be supported future
 	private OverScroller scroller;
 	
 	private boolean scrollable;
@@ -94,7 +98,7 @@ public class EditorTouch implements OnGestureListener,OnDoubleTapListener,OnScal
 		if(maxX < 0){
 			maxX = 0;
 		}
-		this.scrollMaxX = maxX;
+		this.scrollMaxX = Math.max(maxX,scroller.getFinalX());
 	}
 	
 	public void setScrollMaxY(int maxY){
@@ -115,10 +119,12 @@ public class EditorTouch implements OnGestureListener,OnDoubleTapListener,OnScal
 	@Override
 	public boolean onScale(ScaleGestureDetector detector) {
 		float newSize = detector.getScaleFactor() * editor.getStyles().getTextSize();
+		//Too big
 		if(newSize > 100){
 			editor.getStyles().setTextSize(100);
 			return false;
 		}
+		//Too small
 		if(newSize < 20){
 			editor.getStyles().setTextSize(20);
 			return false;

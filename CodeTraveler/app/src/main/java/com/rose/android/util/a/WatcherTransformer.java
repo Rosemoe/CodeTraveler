@@ -5,6 +5,11 @@ import android.text.Spannable;
 import java.util.List;
 import java.util.ArrayList;
 
+//Created By Rose on 2019/7/25
+
+//Helper class of EditorText
+//A simple transformer of TextWatcher
+//TextWatcher -> TextWatcherR,OnActionEndListener
 public class WatcherTransformer implements TextWatcher{
 	
 	private Editable target;

@@ -6,15 +6,42 @@ import com.rose.android.Debug;
 
 //Created By Rose on 2019/7/21
 
+//This is a helper class of EditorText
+//LineManager provides the index of lines
+//It works by making caches and updating these
+//cache data when the text changes
+//So when you are trying to get a index of a
+//line that is far from cached lines,
+//it can spend you much time.
 public class LineManager implements TextWatcherR ,ActionEndListener{
 
+	//The line count of text
 	private int lineCount = 1;
+	
+	//Our serve target
 	private Editable serveTarget;
+	
+	//The cached lines
 	private List<Pair> pairs;
+	
+	//The garbage caches
+	//In order not to create new instance when text updates
 	private List<Pair> garbages;
+	
+	//The last line of text
+	//In order to find index backward and make it more quick
 	private Pair endPoint;
+	
+	//The first line of text
 	private Pair zeroPoint;
+	
+	//Max capcity of cache
+	//We will clean the pairs wheb we add pair to it
 	private int max_capcity;
+	
+	//If the nearest distance of the requesting line to
+	//the cached line is more than it,we will
+	//add the line to the cache
 	private int add_switch;
 	
 	protected LineManager(Editable s){
@@ -22,11 +49,15 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		pairs = new ArrayList<Pair>();
 		garbages = new ArrayList<Pair>();
 		zeroPoint = new Pair();
+		//Update when create.
+		//beacause the onInsert() call from EditorText
+		//will not cause this
 		updateEndPoint();
 		max_capcity = 50;
-		add_switch = 1;
+		add_switch = 30;
 	}
 	
+	//Update the position of last line
 	private void updateEndPoint(){
 		if(endPoint == null){
 			endPoint = new Pair();
@@ -41,13 +72,17 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		}
 	}
 
+	//add a pair to the cache
 	private void addPair(int line, int index) {
 		pairs.add(new Pair(line, index));
+		//clean the pairs
 		while (pairs.size() > max_capcity) {
 			pairs.remove(0);
 		}
 	}
 
+	//Get the cache which has the nearest distance by line index
+	//Please use getNearsetPairWrapped()
 	private Pair getNearestPair(int line){
 		int bestIndex = -1;
 		int bestDistance = line;
@@ -60,6 +95,8 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 			}
 		}
 
+		//No cache or too far
+		//Just return the zeroPoint
 		if(bestIndex != -1){
 			Pair pair = pairs.get(bestIndex);
 			pairs.remove(bestIndex);
@@ -70,6 +107,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		return zeroPoint;
 	}
 
+	//find index forward
 	private int findForward(Pair pair,int count){
 		int line = pair.first;
 		int index = pair.second;
@@ -82,6 +120,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		return index;
 	}
 
+	//find index backward
 	private int findBackward(Pair pair,int count){
 		int line = pair.first;
 		int index = pair.second;
@@ -91,6 +130,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		return index;
 	}
 
+	//CharSequence indexOf without index check
 	private int indexOf(CharSequence s,int start,char c){
 		for(int i = start;i < s.length();i++){
 			if(s.charAt(i)==c){
@@ -100,6 +140,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		return -1;
 	}
 
+	//CharSequence lastIndexOf without index check
 	private int lastIndexOf(CharSequence s,int start,char c){
 		for(int i=start;i>0;i--) {
 			if(s.charAt(i)==c){
@@ -109,10 +150,15 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		return -1;
 	}
 
+	//Get line count
 	public int getLineCount(){
 		return lineCount;
 	}
 
+	//Get line start
+	//Unless the first line,we just return
+	//where the '\n' is.So you might need to
+	//make a simple self-increase after the action
 	public int getLineStart(int line) {
 		if (line == 0) {
 			return 0;
@@ -134,6 +180,8 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		}
 	}
 
+	//Get line end
+	//Do not need to use subSequence(start,end+1)
 	public int getLineEnd(int line) {
 		if(line < 0 || line >= lineCount){
 			throw new IndexOutOfBoundsException("line index out of bounds");
@@ -144,6 +192,9 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		return getLineStart(line + 1);
 	}
 
+	//Get the cache line which has the nearest 
+	//char distance to the given line
+	//Please use getNearestPairByIndexWrapped()
 	private Pair getNearestPairByIndex(int index){
 		int i = -1;
 		int d = index;
@@ -157,6 +208,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		}
 		Pair pair = (i == -1) ? zeroPoint : pairs.get(i);
 
+		//The zeroPoint is the nearest
 		if(i != -1){
 			pairs.remove(pair);
 			pairs.add(pair);
@@ -165,6 +217,8 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		return pair;
 	}
 	
+	//Wrapped
+	//It can advise the end point to you
 	private Pair getNearestPairByIndexWrapped(int index){
 		Pair pair = getNearestPairByIndex(index);
 		int d = Math.abs(pair.second - index);
@@ -172,6 +226,8 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		return (d <= td) ? pair : endPoint;
 	}
 
+	//Wrapped
+	//It can advise the end point to you
 	private Pair getNearestPairWrapped(int line){
 		Pair pair = getNearestPair(line);
 		int d = Math.abs(pair.first - line);
@@ -179,6 +235,8 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		return (d <= td) ? pair : endPoint;
 	}
 
+	//Get the line of the given index
+	//It means that (start<=index&&index<end)
 	public int getLineByIndex(int index){
 		if(index == serveTarget.length()){
 			return lineCount - 1;
@@ -196,6 +254,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		}
 	}
 
+	//find char offset backward
 	private int findUtil_Backward(Pair pair,int index){
 		int line = pair.first;
 		int i = pair.second;
@@ -212,6 +271,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 		return line;
 	}
 
+	//find char offset forward
 	private int findUtil_Forward(Pair pair,int index){
 		int line = pair.first;
 		int i = pair.second;
@@ -259,6 +319,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 				pair.first -= xDl;
 				try{
 					//try to fix a bug...
+					//If you think it is meanless you can delete them
 					if(lastIndexOf(serveTarget,index-1,'\n')==-1){
 						//this is zero point!
 						//we can not remove it now due not to have the ConcurrentModificationException
@@ -297,7 +358,7 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 
 	@Override
 	public void onEnd() {
-		//If we updated at other time
+		//If we updated at other time(onInsert() and onDelete())
 		//the text index will be wrong
 		updateEndPoint();
 	}
@@ -320,10 +381,10 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 	//Data saver
 	private static class Pair{
 		
-		//line name
+		//line index
 		public int first;
 		
-		//line index(the first character after the index is the line start unless it is zero point)
+		//char offset(the first character after the index is the line start unless it is zero point)
 		public int second;
 		
 		//create a zero point

@@ -5,6 +5,12 @@ import android.text.Editable;
 import java.util.ArrayList;
 import android.text.Spannable;
 
+//Created By Rose on 2019/7/26
+
+//Helper class of CodeEditor
+//It is only a container of WatcherTransformer,
+//LineManager and UndoManager.
+//And it is a information provider of nested batch edit
 public class EditorText extends SpannableStringBuilder{
 	
 	private WatcherTransformer transformer;
@@ -19,13 +25,19 @@ public class EditorText extends SpannableStringBuilder{
 	public EditorText(CharSequence src){
 		super(src);
 		transformer = new WatcherTransformer(this);
+		//register LineManager and UndoManager as listeners
 		addWatcher(stack = new UndoManger());
 		addWatcher(lines = new LineManager(this));
+		//Send insert action to LineManager
+		//so that it can calculate the index of last line
+		//Or it might spend much time on finding index
 		if(this.length() != 0)
 			lines.onInsert(this,0,this);
 		nestedBatchEdit = 0;
 		transformer.addE(lines);
 	}
+	
+	//Batch Edit part
 	
 	public void addWatcher(TextWatcherR r){
 		transformer.add(r);
@@ -53,6 +65,8 @@ public class EditorText extends SpannableStringBuilder{
 		stack.setBatchEdit(false);
 	}
 	
+	//UndoManager part
+	
 	public boolean canUndo(){
 		return stack.canUndo();
 	}
@@ -72,6 +86,8 @@ public class EditorText extends SpannableStringBuilder{
 	public UndoManger getUndoManager(){
 		return stack;
 	}
+	
+	//LineManager part
 	
 	public int getLineStart(int line){
 		return lines.getLineStart(line);

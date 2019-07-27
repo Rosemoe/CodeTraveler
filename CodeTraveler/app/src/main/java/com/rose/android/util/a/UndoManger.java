@@ -3,18 +3,38 @@ package com.rose.android.util.a;
 import java.util.ArrayList;
 import android.text.Editable;
 
+//Created By Rose on 2019/7/21
+
+//Helper class of EditorText
+//It saves the undo/redo information for user
 public class UndoManger implements TextWatcherR {
 
+	//Default stack size
 	public final static int DEFAULT_MAX_SIZE = 100;
 
+	//Next action flag
 	private boolean replaceFlag = false;
+	
+	//We are undoing/redoing
+	//and we must ignore the changes
 	private boolean ignoreChange=false;
+	
+	//whether we are in batch edit
 	private boolean batchEdit;
+	
+	//the stack
 	private ArrayList<Action> stack;
+	
+	//current position.in stack
 	private int curr;
+	
+	//cached deleted text
 	private CharSequence cachedText;
 
+	//max stack size
 	private int max_size;
+	
+	//UndoManager enabled
 	private boolean enabled;
 
 	public UndoManger(){
@@ -43,8 +63,6 @@ public class UndoManger implements TextWatcherR {
 	public boolean isEnabled(){
 		return enabled;
 	}
-	
-	
 
 	@Override
 	public void onInsert(Editable doc, int index, CharSequence textToInsert) {
@@ -88,18 +106,23 @@ public class UndoManger implements TextWatcherR {
 	}
 	
 	private void cleanStackBeforeAdd() {
+		//Remove the undo/redo info after index
+		//or it will be wrong to add action to the end
 		while (canRedo()) {
 			stack.remove(stack.size() - 1);
 		}
 	}
 
 	private void cleanStackAfterAdd(){
+		//We should clean the stack after change
+		//So that we will not more than the given max size
 		while(stack.size() > max_size && curr > 0){
 			stack.remove(0);
 			curr--;
 		}
 	}
 
+	//make UndoManager empty
 	public void clearStack() {
 		curr = -1;
 		stack.clear();
@@ -110,6 +133,7 @@ public class UndoManger implements TextWatcherR {
 	private void add(Action action){
 		cleanStackBeforeAdd();
 
+		//in batch edit we should consider all the actions as one action
 		if(batchEdit){
 			if(curr==-1||!(stack.get(curr) instanceof MultiAction)){
 				stack.add(new MultiAction());
@@ -169,6 +193,9 @@ public class UndoManger implements TextWatcherR {
 
 		void redo(Editable doc);
 		
+		//As the users will type texts usually one by one
+		//We should merge the same actions so that it will not
+		//make too many actions
 		boolean canMerge(Action action);
 
 		void merge(Action action);
