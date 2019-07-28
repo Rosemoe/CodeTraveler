@@ -25,6 +25,10 @@ import com.rose.android.util.a.EditorText;
 import com.rose.android.util.a.SelectionController;
 import com.rose.android.util.a.TextWatcherR;
 import com.rose.android.Debug;
+import android.view.ActionMode;
+import android.view.MenuItem;
+import android.view.Menu;
+import java.util.Locale;
 
 public class CodeEditor extends View implements TextWatcherR {
 	
@@ -46,14 +50,21 @@ public class CodeEditor extends View implements TextWatcherR {
 	
 	//detect the actions of scroll or click
 	private GestureDetector mDetector_Basic;
+	
 	//detect the actions of scale text size
 	private ScaleGestureDetector mDetector_Scale;
+	
 	//handle the selection movement
 	private SelectionController selController;
 	
 	//input method service
 	private InputMethodManager mIMM;
+	
+	//connection between view and input method
 	private EditorInputConnection conn;
+	
+	//action mode current
+	private ActionMode am;
 	
 	//height wrap mode
 	private boolean height_wrap;
@@ -89,6 +100,7 @@ public class CodeEditor extends View implements TextWatcherR {
 	 * it will be called only when the view's construcutor is called
 	 */
 	private void initView(){
+		am = null;
 		mPaint = new Paint();
 		mPaint.setAntiAlias(true);
 		mPaint.setTypeface(Typeface.MONOSPACE);
@@ -181,6 +193,11 @@ public class CodeEditor extends View implements TextWatcherR {
 		return mStyle;
 	}
 	
+	//Internal method for selection modifier
+	public EditorTouch getStates(){
+		return mState;
+	}
+	
 	/*
 	 * notifySelChange()
 	 * 
@@ -237,7 +254,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		//Toast.makeText(getContext(),"Line:"+getCharOffsetByThumb(event.getX(),getLineByThumbY(event.getY())),0).show();
 		
 		int thumb = event.getPointerCount();//thumb count
-		if(thumb == 1 && event.getAction() != MotionEvent.ACTION_UP){
+		if(thumb == 1){
 			//might a scale start
 			//so we must send the event to the two detectors
 			
@@ -286,9 +303,15 @@ public class CodeEditor extends View implements TextWatcherR {
 		//scroll max x(TODO)
 		//mState.setScrollMaxX(MeasureSpec.getSize(widthMeasureSpec)*3);
 		//scroll max y
-		mState.setScrollMaxY(getLineCount() * (int)mStyle.getLineHeight() - MeasureSpec.getSize(heightMeasureSpec)/2);
+		//mState.setScrollMaxY(getLineCount() * (int)mStyle.getLineHeight() - MeasureSpec.getSize(heightMeasureSpec)/2);
 		//call super to apply the size config
 		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+	}
+
+	@Override
+	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+		super.onSizeChanged(w, h, oldw, oldh);
+		calculateScrollMaxY();
 	}
 	
 	//---------------------------------------
@@ -373,12 +396,17 @@ public class CodeEditor extends View implements TextWatcherR {
 		int start = selSt;
 		int end = selEd;
 		if(true){
-			if(start != end && start < en && end > st){
+			if(start != end && start <= en && end >= st){
 				//selected text
 				int left = Math.max(start,st);
 				int right = Math.min(end,en);
 				float startX = offsetX + mPaint.measureText(mText.subSequence(st,left).toString().replace("\t","    "));
 				float endX = startX + mPaint.measureText(mText.subSequence(left,right).toString().replace("\t","    "));
+				if(startX == endX){
+					//This is the line end
+					//we add extra space for it to highlight
+					endX += mPaint.measureText("  ");
+				}
 				mPaint.setColor(mStyle.dividerLineColor);
 				mPaint.setAlpha(120);
 				c.drawRect(startX,getLineTopOnScreen(li),endX,getLineBottomOnScreen(li),mPaint);
@@ -632,6 +660,24 @@ public class CodeEditor extends View implements TextWatcherR {
 			selController = new SelectionController(this);
 		}
 	}
+	
+	private void ensureActionModeFinished(){
+		if(am == null){
+			return;
+		}else{
+			try{
+				am.finish();
+			}catch(Throwable e){
+				Log.w("CodeEditor","Exception occured when finishing last ActionMode:",e);
+			}
+			am = null;
+		}
+	}
+	
+	public void startSelectMode(){
+		ensureActionModeFinished();
+		startActionMode();
+	}
 
 	@Override
 	public void computeScroll() {
@@ -874,6 +920,64 @@ public class CodeEditor extends View implements TextWatcherR {
 		//we reset the batch edit state
 		mText.resetBatchEdit();
 		return onCheckIsTextEditor() ? (conn = new EditorInputConnection(this)) : null;
+	}
+	
+	//---------------------------------------
+	
+	private class SelectMode implements ActionMode.Callback {
+
+		//TODO here
+		
+		@Override
+		public boolean onCreateActionMode(ActionMode p1, Menu menu) {
+			MenuItem item = menu.add(Constant.getString(Constant.select_all));
+			
+			return getStart() != getEnd();
+		}
+
+		@Override
+		public boolean onPrepareActionMode(ActionMode p1, Menu p2) {
+			
+			return false;
+		}
+
+		@Override
+		public boolean onActionItemClicked(ActionMode p1, MenuItem p2) {
+			
+			return false;
+		}
+
+		@Override
+		public void onDestroyActionMode(ActionMode p1) {
+			
+		}
+
+		
+	}
+	
+	private static class Constant{
+		
+		private final static String[] zh_cn = {"复制","粘贴","剪切","全选"};
+		
+		private final static String[] en_us = {"Copy","Paste","Cut","Select All"};
+		
+		static final int copy = 0;
+		static final int paste = 1;
+		static final int cut = 2;
+		static final int select_all = 3;
+		
+		public static String getString(int id){
+			return getString(Locale.getDefault(),id);
+		}
+		
+		public static String getString(Locale locale,int id){
+			if(String.valueOf(locale).toLowerCase().contains("zh")){
+				return zh_cn[id];
+			}else{
+				return en_us[id];
+			}
+		}
+		
 	}
 	
 	//---------------------------------------

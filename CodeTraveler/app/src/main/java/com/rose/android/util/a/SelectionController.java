@@ -108,6 +108,7 @@ public class SelectionController
 								dirty();
 							}
 					}
+					target.getStates().setModification(true);
 					return true;
 				case MotionEvent.ACTION_UP:
 					thumbDown = false;
@@ -154,7 +155,7 @@ public class SelectionController
 			mPaint=new Paint();
 			mPaint.setColor(target.getStyles().getHandleColor());
 			mPaint.setAntiAlias(true);
-			mPaint.setTextSize(50.0f);
+			mPaint.setTextSize(52.0f);
 			r = (mPaint.descent()-mPaint.ascent())/2;
 			setBounds(0,0,0,0);
 		}
