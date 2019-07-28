@@ -29,6 +29,7 @@ import android.view.ActionMode;
 import android.view.MenuItem;
 import android.view.Menu;
 import java.util.Locale;
+import android.content.ClipboardManager;
 
 public class CodeEditor extends View implements TextWatcherR {
 	
@@ -553,6 +554,7 @@ public class CodeEditor extends View implements TextWatcherR {
 	
 	public void select(int st,int ed){
 		Selection.setSelection(mText,st,ed);
+		invalidate();
 	}
 	
 	//Get the char index under given thumb info
@@ -676,7 +678,7 @@ public class CodeEditor extends View implements TextWatcherR {
 	
 	public void startSelectMode(){
 		ensureActionModeFinished();
-		startActionMode();
+		startActionMode(new SelectMode());
 	}
 
 	@Override
@@ -924,15 +926,40 @@ public class CodeEditor extends View implements TextWatcherR {
 	
 	//---------------------------------------
 	
+	private ClipboardManager getCm(){
+		return (ClipboardManager)getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+	}
+	
+	private void selectAll(){
+		select(0,mText.length());
+	}
+	
+	private void cut(){
+		CharSequence text = mText.subSequence(getStart(),getEnd());
+		getCm().setText(text);
+		mText.delete(getStart(),getEnd());
+	}
+	
+	private void copy(){
+		CharSequence text = mText.subSequence(getStart(),getEnd());
+		getCm().setText(text);
+	}
+	
+	private void paste(){
+		CharSequence text = getCm().getText();
+		mText.replace(getStart(),getEnd(),text);
+	}
+	
 	private class SelectMode implements ActionMode.Callback {
 
 		//TODO here
 		
 		@Override
 		public boolean onCreateActionMode(ActionMode p1, Menu menu) {
-			MenuItem item = menu.add(Constant.getString(Constant.select_all));
-			
-			return getStart() != getEnd();
+			if(getStart() == getEnd()){
+				return false;
+			}
+			return true;
 		}
 
 		@Override
@@ -952,31 +979,6 @@ public class CodeEditor extends View implements TextWatcherR {
 			
 		}
 
-		
-	}
-	
-	private static class Constant{
-		
-		private final static String[] zh_cn = {"复制","粘贴","剪切","全选"};
-		
-		private final static String[] en_us = {"Copy","Paste","Cut","Select All"};
-		
-		static final int copy = 0;
-		static final int paste = 1;
-		static final int cut = 2;
-		static final int select_all = 3;
-		
-		public static String getString(int id){
-			return getString(Locale.getDefault(),id);
-		}
-		
-		public static String getString(Locale locale,int id){
-			if(String.valueOf(locale).toLowerCase().contains("zh")){
-				return zh_cn[id];
-			}else{
-				return en_us[id];
-			}
-		}
 		
 	}
 	
