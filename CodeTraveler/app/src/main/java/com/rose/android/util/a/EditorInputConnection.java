@@ -46,8 +46,7 @@ public class EditorInputConnection extends BaseInputConnection{
 		if(event.getAction() == event.ACTION_DOWN){
 			switch(event.getKeyCode()){
 				case KeyEvent.KEYCODE_DEL:
-					//Delete Key
-					deleteSurroundingText(1,0);
+					deleteKey();
 					return true;
 				case KeyEvent.KEYCODE_ENTER:
 					//Insert a '\n'
@@ -66,6 +65,16 @@ public class EditorInputConnection extends BaseInputConnection{
 			}
 		}
 		return super.sendKeyEvent(event);
+	}
+	
+	private void deleteKey(){
+		int start = ce.getStart();
+		int end = ce.getEnd();
+		if(start == end){
+			deleteSurroundingText(1,0);
+		}else{
+			ce.getEditableText().delete(start,end);
+		}
 	}
 
 	@Override

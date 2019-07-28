@@ -237,6 +237,8 @@ public class LineManager implements TextWatcherR ,ActionEndListener{
 
 	//Get the line of the given index
 	//It means that (start<=index&&index<end)
+	//But there is a little bug
+	//Please see CodeEditor's code to get the solution
 	public int getLineByIndex(int index){
 		if(index == serveTarget.length()){
 			return lineCount - 1;

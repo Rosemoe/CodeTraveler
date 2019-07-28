@@ -1,17 +1,23 @@
 package com.rose.android;
 
-import android.app.*;
-import android.os.*;
-import com.rose.android.widget.CodeEditor;
-import android.widget.FrameLayout;
-import android.widget.Toast;
-import java.io.FileOutputStream;
+import android.app.Activity;
+import android.os.Bundle;
+import android.os.Looper;
+import android.view.View;
+import android.view.WindowManager;
 import java.io.File;
+import java.io.FileOutputStream;
+import com.rose.android.widget.CodeEditor;
+import android.widget.TextView;
 public class MainActivity extends Activity 
 {
+	private CodeEditor ce;
+	
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
+		getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE|WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+		
         super.onCreate(savedInstanceState);
 		
 		Debug.attachContext(this);
@@ -51,8 +57,26 @@ public class MainActivity extends Activity
 			
 		});
 		
-		CodeEditor e = new CodeEditor(this);
-		e.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
-        setContentView(e);
+		//CodeEditor e = new CodeEditor(this);
+		//e.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
+        setContentView(R.layout.main);
+		ce = (CodeEditor) findViewById(R.id.editor);
     }
+	
+	public void insert(View view){
+		switch(((TextView)view).getText().toString()){
+			case "←":
+				ce.moveSelectionLeft();
+				break;
+			case "→":
+				ce.moveSelectionRight();
+				break;
+			case "↑":
+				ce.moveSelectionUp();
+				break;
+			case "↓":
+				ce.moveSelectionDown();
+				break;
+		}
+	}
 }

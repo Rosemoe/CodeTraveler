@@ -17,6 +17,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.text.Selection;
 import com.rose.android.Debug;
+import java.util.Random;
 
 //Helper class of CodeEditor
 //This class handles the touch events of the editor
@@ -98,7 +99,7 @@ public class EditorTouch implements OnGestureListener,OnDoubleTapListener,OnScal
 		if(maxX < 0){
 			maxX = 0;
 		}
-		this.scrollMaxX = Math.max(maxX,scroller.getFinalX());
+		this.scrollMaxX = Math.max(maxX,scroller.getCurrX());
 	}
 	
 	public void setScrollMaxY(int maxY){
@@ -151,26 +152,7 @@ public class EditorTouch implements OnGestureListener,OnDoubleTapListener,OnScal
 				Log.w(LOG_TAG,"Unable to show soft input for editor:" + editor.toString());
 			}
 		}
-		float x = event.getX() + getOffsetX() - (editor.getLastOffset()+getOffsetX());
-		float y = event.getY() + getOffsetY();
-		int line = (int)(y/editor.getStyles().getLineHeight());
-		if(line < 0){
-			line = 0;
-		}else if(line >= editor.getLineCount()){
-			line = editor.getLineCount() - 1;
-		}
-		int st = editor.getLineStart(line);
-		int ed = editor.getLineEnd(line);
-		int j = st;
-		float drawX = 0;
-		while(drawX < x && j < ed){
-			drawX = editor.measureText(st,j);
-			j++;
-		}
-		if(st != ed && st < j && drawX > x){
-			j--;
-		}
-		Selection.setSelection(editor.getEditableText(),j);
+		Selection.setSelection(editor.getEditableText(),editor.getCharOffsetByThumb(event.getX(),editor.getLineByThumbY(event.getY())));
 		editor.notifySelChange();
 		editor.invalidate();
 		return true;
@@ -235,7 +217,28 @@ public class EditorTouch implements OnGestureListener,OnDoubleTapListener,OnScal
 
 	@Override
 	public void onLongPress(MotionEvent event) {
-		//TODO:Select Texts
+		float x = event.getX();
+		float y = event.getY();
+		int line = editor.getLineByThumbY(y);
+		if(line < 0){
+			return;
+		}
+		int lineSt = editor.getLineStart(line);
+		int lineEd = editor.getLineEnd(line);
+		int thumb = editor.getCharOffsetByThumb(x,line);
+		int rand = (int)(Math.random()*4);
+		if(rand == 0){
+			rand = 2;
+		}
+		int left = thumb - rand;
+		int right = thumb + rand;
+		if(lineSt != lineEd){
+			left = left < lineSt ? lineSt : left;
+			right = right > lineEd ? lineEd : right;
+		}
+		editor.createSelectionControllerIfNeed();
+		Selection.setSelection(editor.getEditableText(),left,right);
+		editor.invalidate();
 	}
 
 	@Override

@@ -1,13 +1,60 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:gravity="center"
-    android:orientation="vertical"
-    >
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical">
 
-    <TextView
-        android:text="hello_world"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+	<com.rose.android.widget.CodeEditor
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:layout_marginBottom="42dp"
+		android:id="@+id/editor"/>
+
+	<HorizontalScrollView
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:layout_marginTop="-42dp">
+
+		<LinearLayout
+			android:orientation="horizontal"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent">
+
+			<Button
+				android:layout_width="36dp"
+				android:layout_height="wrap_content"
+				android:text="←"
+				android:background="#00000000"
+				android:onClick="insert"/>
+
+			<Button
+				android:layout_width="36dp"
+				style="?android:attr/buttonStyleSmall"
+				android:layout_height="wrap_content"
+				android:text="→"
+				android:background="#00000000"
+				android:onClick="insert"/>
+
+			<Button
+				android:layout_width="36dp"
+				style="?android:attr/buttonStyleSmall"
+				android:layout_height="wrap_content"
+				android:text="↑"
+				android:background="#00000000"
+				android:onClick="insert"/>
+
+			<Button
+				android:layout_width="36dp"
+				style="?android:attr/buttonStyleSmall"
+				android:layout_height="wrap_content"
+				android:text="↓"
+				android:background="#00000000"
+				android:onClick="insert"/>
+
+		</LinearLayout>
+
+	</HorizontalScrollView>
 
 </LinearLayout>
+
