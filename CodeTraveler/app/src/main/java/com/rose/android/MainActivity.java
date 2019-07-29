@@ -57,8 +57,6 @@ public class MainActivity extends Activity
 			
 		});
 		
-		//CodeEditor e = new CodeEditor(this);
-		//e.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
         setContentView(R.layout.main);
 		ce = (CodeEditor) findViewById(R.id.editor);
     }

@@ -2,7 +2,9 @@ package com.rose.android.widget;
 
 //Created By Rose on 2019/7/19
 
+import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -11,8 +13,11 @@ import android.text.Editable;
 import android.text.Selection;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.ActionMode;
 import android.view.GestureDetector;
 import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -24,12 +29,6 @@ import com.rose.android.util.a.EditorInputConnection;
 import com.rose.android.util.a.EditorText;
 import com.rose.android.util.a.SelectionController;
 import com.rose.android.util.a.TextWatcherR;
-import com.rose.android.Debug;
-import android.view.ActionMode;
-import android.view.MenuItem;
-import android.view.Menu;
-import java.util.Locale;
-import android.content.ClipboardManager;
 
 public class CodeEditor extends View implements TextWatcherR {
 	
@@ -678,7 +677,11 @@ public class CodeEditor extends View implements TextWatcherR {
 	
 	public void startSelectMode(){
 		ensureActionModeFinished();
-		startActionMode(new SelectMode());
+		am = startActionMode(new SelectMode());
+	}
+	
+	public void stopActionMode(){
+		ensureActionModeFinished();
 	}
 
 	@Override
@@ -951,32 +954,60 @@ public class CodeEditor extends View implements TextWatcherR {
 	}
 	
 	private class SelectMode implements ActionMode.Callback {
-
-		//TODO here
 		
 		@Override
-		public boolean onCreateActionMode(ActionMode p1, Menu menu) {
+		public boolean onCreateActionMode(ActionMode var1, Menu var2) {
 			if(getStart() == getEnd()){
 				return false;
 			}
+			var1.setTitle(17039382);
+			TypedArray var4 = getContext().getTheme().obtainStyledAttributes(new int[]{16843646, 16843537, 16843538, 16843539});
+			int flag =MenuItem.SHOW_AS_ACTION_IF_ROOM;
+			//Select All
+			var2.add(0, 0, 0, getContext().getString(17039373)).setShowAsActionFlags(flag).setAlphabeticShortcut('a').setIcon(var4.getDrawable(0));
+			//Cut
+			var2.add(0, 1, 0, getContext().getString(17039363)).setShowAsActionFlags(flag).setAlphabeticShortcut('x').setIcon(var4.getDrawable(1));
+			//Copy
+			var2.add(0, 2, 0, getContext().getString(17039361)).setShowAsActionFlags(flag).setAlphabeticShortcut('c').setIcon(var4.getDrawable(2));
+			//Paste
+			var2.add(0, 3, 0, getContext().getString(17039371)).setShowAsActionFlags(flag).setAlphabeticShortcut('v').setIcon(var4.getDrawable(3));
+			var4.recycle();
 			return true;
 		}
 
 		@Override
 		public boolean onPrepareActionMode(ActionMode p1, Menu p2) {
-			
+			//do nothing
 			return false;
 		}
 
 		@Override
-		public boolean onActionItemClicked(ActionMode p1, MenuItem p2) {
-			
-			return false;
+		public boolean onActionItemClicked(ActionMode am, MenuItem p2) {
+			switch(p2.getItemId()){
+				case 0:
+					selectAll();
+					break;
+				case 1:
+					cut();
+					am.finish();
+					break;
+				case 2:
+					copy();
+					am.finish();
+					break;
+				case 3:
+					paste();
+					am.finish();
+					break;
+			}
+			return true;
 		}
 
 		@Override
 		public void onDestroyActionMode(ActionMode p1) {
-			
+			am = null;
+			mState.setModification(false);
+			select(getStart());
 		}
 
 		
@@ -988,6 +1019,7 @@ public class CodeEditor extends View implements TextWatcherR {
 		
 		//These are colors
 		private int defaultTextColor = Color.BLACK;
+		private int selectedTextBg = 0x66ec407a;
 		private int lineColor = 0x66ec407a;
 		private int lineNumberColor = 0xff3f51b5;
 		private int dividerLineColor = 0xff3f51b5;
@@ -1179,7 +1211,8 @@ public class CodeEditor extends View implements TextWatcherR {
 		 */
 		public void setLineNumberColor(int c){
 			lineNumberColor=c;
-			invalidate();
+			if(showLineNumber)
+				invalidate();
 		}
 		
 		//Getter
@@ -1194,7 +1227,8 @@ public class CodeEditor extends View implements TextWatcherR {
 		 */
 		public void setDividerColor(int c){
 			dividerLineColor=c;
-			invalidate();
+			if(showLineNumber)
+				invalidate();
 		}
 		
 		//Getter
@@ -1207,7 +1241,8 @@ public class CodeEditor extends View implements TextWatcherR {
 		 */
 		public void setLineNumberBackground(int c){
 			LNBG =c;
-			invalidate();
+			if(showLineNumber)
+				invalidate();
 		}
 		
 		//Getter
@@ -1221,7 +1256,8 @@ public class CodeEditor extends View implements TextWatcherR {
 		 */
 		public void setCurrentLineColor(int c){
 			lineColor = c;
-			invalidate();
+			if(getStart()==getEnd())
+				invalidate();
 		}
 		
 		//Getter
@@ -1234,12 +1270,24 @@ public class CodeEditor extends View implements TextWatcherR {
 			if(selController != null){
 				selController.getLeftHandle().setHandleColor(c);
 				selController.getRightHandle().setHandleColor(c);
-				invalidate();
+				if(getStart()!=getEnd())
+					invalidate();
 			}
 		}
 		
 		public int getHandleColor(){
 			return handleColor;
+		}
+		
+		public void setSelectedTextBackgroundColor(int c){
+			selectedTextBg=c;
+			if(getStart()!=getEnd()){
+				invalidate();
+			}
+		}
+		
+		public int getSelectedTextBackgroundColor(){
+			return selectedTextBg;
 		}
 		
 		/*

@@ -239,6 +239,7 @@ public class EditorTouch implements OnGestureListener,OnDoubleTapListener,OnScal
 		}
 		if(modification){
 			modification = false;
+			editor.stopActionMode();
 			return true;
 		}
 		Selection.setSelection(editor.getEditableText(),editor.getCharOffsetByThumb(event.getX(),editor.getLineByThumbY(event.getY())));
@@ -331,10 +332,16 @@ public class EditorTouch implements OnGestureListener,OnDoubleTapListener,OnScal
 		if(lineSt != lineEd){
 			left = left < lineSt ? lineSt : left;
 			right = right > lineEd ? lineEd : right;
+		}else{
+			int len = editor.getEditableText().length();
+			left = left < 0 ? 0 : left;
+			right = right >len ? len : right;
 		}
 		editor.createSelectionControllerIfNeed();
 		Selection.setSelection(editor.getEditableText(),left,right);
 		modification = true;
+		editor.notifySelChange();
+		editor.startSelectMode();
 		editor.invalidate();
 	}
 
