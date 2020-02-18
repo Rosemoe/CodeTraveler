@@ -1,6 +1,12 @@
 # CodeTraveler
 <strong>This repo is deprecated,because new project has been created.</strong>  
-Try to find RoseEditor repo.  
+My new project : [CodeEditor](https://github.com/Rose2073/CodeEditor)   
+The new project has implemented most abilities of a code editor(highlight,auto complete,jump to declaraction,etc.)   
+Please go to the new project for better usage.   
+
+
+
+
 ~~A nice code editor for Android!~~  
 I have been working it out for serveral days.  
 Want More information about it?Please see the following items.  
